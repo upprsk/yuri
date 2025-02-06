@@ -10,13 +10,15 @@ var_decl  ::= "var" ID [ ":" expr ] "=" expr ";" ;
 
 (* stmts *)
 
-block ::= "{" { stmt } "}" ;
-stmt  ::= expr_stmt
-        | return_stmt
-        | while_stmt
-        | assign
-        ;
+stmt ::= block
+       | expr_stmt
+       | return_stmt
+       | while_stmt
+       | assign
+       | var_decl
+       ;
 
+block       ::= "{" { stmt } "}" ;
 expr_stmt   ::= expr ";" ;
 return_stmt ::= "return" expr ";" ;
 while_stmt  ::= "while" expr block ;
@@ -26,12 +28,13 @@ assign      ::= expr ("=" | "+=" | "-=" | "*=" | "/=") expr ";" ;
 
 expr ::= additive ;
 
-additive ::= multiplicative { ("+" | "-") additive } ;
+additive ::= multiplicative [("+" | "-") additive ] ;
 
-multiplicative ::= primary { ("*" | "/") multiplicative } ;
+multiplicative ::= primary [ ("*" | "/") multiplicative ] ;
 
 primary ::= ID
           | INT
+          | "(" expr ")"
           ;
 
 (* terminals *)
