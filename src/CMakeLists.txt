@@ -9,6 +9,8 @@ add_library(yuri
     span.hpp
     tokenizer.cpp
     tokenizer.hpp
+    types.cpp
+    types.hpp
 )
 target_include_directories(yuri PUBLIC .)
 target_compile_options(yuri PRIVATE -Wall -Wextra)

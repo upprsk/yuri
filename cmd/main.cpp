@@ -49,6 +49,9 @@ auto main(int argc, char** argv) -> int {
         auto ast = yuri::parse(&er, *contents, tokens);
         fmt::println("{}", ast);
 
+        ast.add_types();
+        fmt::println("{}", ast);
+
         return 0;
     }
     CPPTRACE_CATCH(std::exception const& e) {

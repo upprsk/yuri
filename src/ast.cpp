@@ -1,7 +1,45 @@
 #include "ast.hpp"
 
+#include <stdexcept>
+
 #include "fmt/ranges.h"  // IWYU pragma: keep
 #include "fmt/std.h"     // IWYU pragma: keep
+#include "types.hpp"
+
+namespace yuri {
+
+auto AstNode::add_types() -> Type {
+    switch (kind) {
+        case AstNodeKind::Nil: return set_type(Type::Void());
+        case AstNodeKind::SourceFile: {
+            for (auto& node : children) node.add_types();
+
+            return set_type(Type::Void());
+        }
+        case AstNodeKind::Func: {
+            for (auto& node : children) node.add_types();
+
+            return set_type(Type::Func());
+        }
+        case AstNodeKind::VarDecl:
+        case AstNodeKind::Block:
+        case AstNodeKind::ExprStmt:
+        case AstNodeKind::ReturnStmt:
+        case AstNodeKind::WhileStmt:
+        case AstNodeKind::Assign:
+        case AstNodeKind::Add:
+        case AstNodeKind::Sub:
+        case AstNodeKind::Mul:
+        case AstNodeKind::Div:
+        case AstNodeKind::Id:
+        case AstNodeKind::Int:
+        case AstNodeKind::Err: break;
+    }
+
+    throw std::runtime_error(fmt::format("not implemented for {}", *this));
+}
+
+}  // namespace yuri
 
 auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
                                                format_context&   ctx) const
@@ -34,6 +72,6 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
 auto fmt::formatter<yuri::AstNode>::format(yuri::AstNode   t,
                                            format_context& ctx) const
     -> format_context::iterator {
-    return fmt::format_to(ctx.out(), "{{{}, {}, {}, {}}}", t.kind, t.span,
-                          t.value, t.children);
+    return fmt::format_to(ctx.out(), "{{{}, {}, {}, {}, {}}}", t.kind, t.type,
+                          t.span, t.value, t.children);
 }

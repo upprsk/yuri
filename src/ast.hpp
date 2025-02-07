@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "span.hpp"
+#include "types.hpp"
 
 namespace yuri {
 
@@ -33,6 +34,7 @@ struct AstNode {
     std::vector<AstNode>                                children;
     Span                                                span;
     AstNodeKind                                         kind;
+    Type                                                type{};
 
     static auto Nil() -> AstNode {
         return {.children = {}, .span = {}, .kind = AstNodeKind::Nil};
@@ -126,6 +128,13 @@ struct AstNode {
 
     constexpr auto left() const -> AstNode const& { return children.at(0); }
     constexpr auto right() const -> AstNode const& { return children.at(1); }
+
+    constexpr auto set_type(Type&& t) -> Type {
+        type = std::move(t);
+        return type;
+    }
+
+    auto add_types() -> Type;
 };
 
 }  // namespace yuri
