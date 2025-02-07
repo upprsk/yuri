@@ -1,5 +1,8 @@
 #include "types.hpp"
 
+#include <span>
+
+#include "fmt/base.h"
 #include "fmt/ranges.h"  // IWYU pragma: keep
 
 auto fmt::formatter<yuri::TypeKind>::format(yuri::TypeKind  c,
@@ -23,6 +26,21 @@ auto fmt::formatter<yuri::TypeKind>::format(yuri::TypeKind  c,
 
 auto fmt::formatter<yuri::Type>::format(yuri::Type t, format_context& ctx) const
     -> format_context::iterator {
-    if (t.inner.empty()) return fmt::format_to(ctx.out(), "{{{}}}", t.kind);
+    switch (t.kind) {
+        case yuri::TypeKind::Err: return fmt::format_to(ctx.out(), "Type::Err");
+        case yuri::TypeKind::Void: return fmt::format_to(ctx.out(), "void");
+        case yuri::TypeKind::Type: return fmt::format_to(ctx.out(), "type");
+        case yuri::TypeKind::Func: {
+            std::span args = t.inner;
+            args = args.subspan(0, args.size() - 1);
+
+            return fmt::format_to(ctx.out(), "func({}) {}",
+                                  fmt::join(args, ", "),
+                                  t.inner.at(t.inner.size() - 1));
+        }
+        case yuri::TypeKind::Int: return fmt::format_to(ctx.out(), "int");
+        case yuri::TypeKind::Bool: return fmt::format_to(ctx.out(), "bool");
+    }
+
     return fmt::format_to(ctx.out(), "{{{}, {}}}", t.kind, t.inner);
 }
