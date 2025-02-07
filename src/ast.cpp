@@ -162,7 +162,7 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
                 er.report_note(children.at(1).span, "this has type {}", rhs);
             }
 
-            return lhs;
+            return set_type(lhs);
         }
         case AstNodeKind::Id: {
             auto const& name = std::get<std::string>(value);
