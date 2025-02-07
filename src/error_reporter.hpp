@@ -13,10 +13,8 @@
 namespace yuri {
 
 class ErrorReporter {
-    static constexpr auto const error_style =
-        fmt::fg(fmt::color::red) | fmt::emphasis::bold;
-    static constexpr auto const note_style =
-        fmt::fg(fmt::color::cyan) | fmt::emphasis::bold;
+    static constexpr auto const error_style = fmt::fg(fmt::color::red);
+    static constexpr auto const note_style = fmt::fg(fmt::color::cyan);
 
 public:
     constexpr ErrorReporter(std::string source, std::string source_path)
@@ -24,6 +22,7 @@ public:
 
     template <typename... T>
     void report_error(Span s, fmt::format_string<T...> fmt, T&&... args) {
+        error_count++;
         report(s, "error", error_style, fmt, fmt::make_format_args(args...));
     }
 
