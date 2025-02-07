@@ -269,7 +269,7 @@ struct Parser {
     }
 
     auto parse_multiplicative() -> AstNode {
-        auto left = parse_primary();
+        auto left = parse_call();
 
         auto        t = peek();
         AstNodeKind kind;
@@ -284,6 +284,18 @@ struct Parser {
         AstNode right = parse_multiplicative();
 
         return AstNode::Binary(left.span.extend(right.span), kind, left, right);
+    }
+
+    auto parse_call() -> AstNode {
+        auto expr = parse_primary();
+
+        if (peek().type != TokenType::Lparen) return expr;
+        advance();
+
+        auto end = span();
+        try_consume(TokenType::Rparen, end, "expected ')'");
+
+        return AstNode::Call(expr.span.extend(end), expr, {});
     }
 
     auto parse_primary() -> AstNode {

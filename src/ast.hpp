@@ -32,6 +32,7 @@ enum class AstNodeKind {
     GreaterThan,
     GreaterThanEqual,
     Equal,
+    Call,
     Id,
     Int,
     Err,
@@ -113,6 +114,18 @@ struct AstNode {
             .children = {left, right},
             .span = span,
             .kind = kind,
+        };
+    }
+
+    static auto Call(Span span, AstNode const& callee,
+                     std::vector<AstNode> const& args) -> AstNode {
+        std::vector children = {callee};
+        for (auto const& n : args) children.push_back(n);
+
+        return {
+            .children = children,
+            .span = span,
+            .kind = AstNodeKind::Call,
         };
     }
 

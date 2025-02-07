@@ -31,7 +31,9 @@ expr ::= comparison ;
 
 comparison     ::= additive [ ("<", "<=", ">", ">=", "==") comparison ;
 additive       ::= multiplicative [ ("+" | "-") additive ] ;
-multiplicative ::= primary [ ("*" | "/") multiplicative ] ;
+multiplicative ::= call [ ("*" | "/") multiplicative ] ;
+(* TODO: call arguments *)
+call           ::= primary [ "(" ")" ] ;
 
 primary ::= ID
           | INT

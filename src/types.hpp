@@ -23,6 +23,7 @@ struct Type {
     constexpr auto is_void() const -> bool { return kind == TypeKind::Void; }
     constexpr auto is_type() const -> bool { return kind == TypeKind::Type; }
     constexpr auto is_bool() const -> bool { return kind == TypeKind::Bool; }
+    constexpr auto is_func() const -> bool { return kind == TypeKind::Func; }
 
     // NOTE: remember to add other integer types here in the future
     constexpr auto is_integral() const -> bool { return kind == TypeKind::Int; }

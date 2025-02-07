@@ -198,6 +198,18 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             return set_type(Type::Bool());
         }
+        case AstNodeKind::Call: {
+            auto callee = children.at(0).add_types(env, er);
+            if (!callee.is_func()) {
+                er.report_error(children.at(0).span,
+                                "can't call non-function {}", callee);
+                return set_type(Type::Err());
+            }
+
+            // TODO: args
+
+            return set_type(callee.inner.at(callee.inner.size() - 1));
+        }
         case AstNodeKind::Id: {
             auto const& name = std::get<std::string>(value);
             auto        type = env.lookup(name);
@@ -264,6 +276,7 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::GreaterThan: name = "GreaterThan"; break;
         case T::GreaterThanEqual: name = "GreaterThanEqual"; break;
         case T::Equal: name = "Equal"; break;
+        case T::Call: name = "Call"; break;
         case T::Id: name = "Id"; break;
         case T::Int: name = "Int"; break;
         case T::Err: name = "Err"; break;
