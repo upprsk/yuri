@@ -1,12 +1,9 @@
 func main() int {
     var i = 0;
-    var j = 100;
 
-    var acc = 0;
-    while i < j {
-        acc += i * j;
-        i += 1;
+    while true {
+        i = i + 1;
     }
 
-    return acc;
+    return (0 + 1) * 2 + i;
 }

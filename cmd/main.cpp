@@ -8,6 +8,7 @@
 #include "fmt/base.h"
 #include "fmt/core.h"
 #include "fmt/ranges.h"  // IWYU pragma: keep
+#include "parser.hpp"
 #include "tokenizer.hpp"
 
 auto read_entire_file(std::string const& path) -> std::optional<std::string> {
@@ -45,9 +46,8 @@ auto main(int argc, char** argv) -> int {
         yuri::ErrorReporter er{*contents, argv[1]};
 
         auto tokens = yuri::tokenize(&er, *contents);
-        for (auto const& t : tokens) {
-            er.report_note(t.span, "token={}", t);
-        }
+        auto ast = yuri::parse(&er, *contents, tokens);
+        fmt::println("{}", ast);
 
         return 0;
     }

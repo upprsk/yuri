@@ -86,6 +86,14 @@ struct Token {
     define_constructor(Err);
 
 #undef define_constructor
+
+    constexpr auto is_eof() const -> bool { return type == TokenType::Eof; }
+    constexpr auto is_id() const -> bool { return type == TokenType::Id; }
+
+    constexpr auto is_kw(std::string_view source, std::string_view s) const
+        -> bool {
+        return type == TokenType::Id && span.str(source) == s;
+    }
 };
 
 auto tokenize(ErrorReporter* er, std::string_view source) -> std::vector<Token>;
