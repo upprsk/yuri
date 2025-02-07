@@ -92,7 +92,7 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
             auto e = env.child();
             auto inner = children.at(0).add_types(e, er);
 
-            if (!inner.is_void()) {
+            if (!inner.is_void() && !inner.is_err()) {
                 er.report_error(span, "discarting expression result");
                 er.report_note(children.at(0).span, "expressing has type {}",
                                inner);

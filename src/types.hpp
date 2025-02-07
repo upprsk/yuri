@@ -19,6 +19,7 @@ struct Type {
     TypeKind          kind;
     std::vector<Type> inner{};
 
+    constexpr auto is_err() const -> bool { return kind == TypeKind::Err; }
     constexpr auto is_void() const -> bool { return kind == TypeKind::Void; }
     constexpr auto is_type() const -> bool { return kind == TypeKind::Type; }
     constexpr auto is_bool() const -> bool { return kind == TypeKind::Bool; }
