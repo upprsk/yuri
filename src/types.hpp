@@ -34,8 +34,12 @@ struct Type {
 
     static auto Void() -> Type { return {.kind = TypeKind::Void}; }
 
-    static auto Func(Type const& return_type) -> Type {
-        return {.kind = TypeKind::Func, .inner = {return_type}};
+    static auto Func(std::vector<Type> const& args, Type const& return_type)
+        -> Type {
+        auto inner = args;
+        inner.push_back(return_type);
+
+        return {.kind = TypeKind::Func, .inner = inner};
     }
 
     static auto Int() -> Type { return {.kind = TypeKind::Int}; }

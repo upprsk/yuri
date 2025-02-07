@@ -52,12 +52,29 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
             auto be = e.with_return_type(&ret, ret_span);
             children.at(children.size() - 1).add_types(be, er);
 
-            env.define(name, Type::Func(ret));
+            std::vector<Type> arg_types;
+            for (auto const& arg : args) {
+                arg_types.push_back(arg.type);
+            }
+
+            env.define(name, Type::Func(arg_types, ret));
 
             return set_type(Type::Void());
         }
         case AstNodeKind::FuncDeclArg: {
-            return set_type(Type::Void());
+            auto const& name = std::get<std::string>(value);
+
+            auto type_anon = children.at(0).add_types(env, er);
+            if (!type_anon.is_type()) {
+                er.report_error(children.at(0).span,
+                                "expected type for argument, got {}",
+                                type_anon);
+            }
+
+            auto type = children.at(0).eval_to_type(env, er);
+            env.define(name, type);
+
+            return set_type(type);
         }
         case AstNodeKind::VarDecl: {
             auto        e = env.child();
@@ -218,7 +235,32 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
                 return set_type(Type::Err());
             }
 
-            // TODO: args
+            std::span args = children;
+            args = args.subspan(1);
+            for (auto& arg : args) {
+                arg.add_types(env, er);
+            }
+
+            std::span expected_args = callee.inner;
+            expected_args = expected_args.subspan(0, expected_args.size() - 1);
+
+            if (args.size() != expected_args.size()) {
+                er.report_error(
+                    children.at(0).span,
+                    "wrong number of arguments, expected {}, got {}",
+                    expected_args.size(), args.size());
+            }
+
+            for (size_t i = 0; i < std::min(args.size(), expected_args.size());
+                 i++) {
+                if (args[i].type != expected_args[i]) {
+                    er.report_error(args[i].span,
+                                    "incompatible argument type, expected {}",
+                                    expected_args[i]);
+                    er.report_note(args[i].span, "this expression has type {}",
+                                   args[i].type);
+                }
+            }
 
             return set_type(callee.inner.at(callee.inner.size() - 1));
         }

@@ -1,12 +1,12 @@
-func say_hello(i: int) {}
+func sub(i: int) int {
+    return i - 1;
+}
 
 func main() int {
     var total = 1 + 2 * 3;
     var i = total;
     while i > 0 {
-        i = i - 1;
-
-        say_hello();
+        i = sub(i);
     }
 
     return i;

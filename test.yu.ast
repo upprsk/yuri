@@ -1,59 +1,52 @@
-{SourceFile, {Void}, {0, 203}, [
-    {Func, {Void}, {0, 203}, variant("main"), [
-        {Id, {Type}, {12, 15}, variant("int")},
-        {Block, {Void}, {16, 203}, [
-            {VarDecl, {Void}, {22, 44}, variant("total"), [
+{SourceFile, {Void}, {0, 168}, [
+    {Func, {Void}, {0, 42}, variant("sub"), [
+        {FuncDeclArg, {Int}, {9, 15}, variant("i"), [
+            {Id, {Type}, {12, 15}, variant("int")}
+        ]},
+        {Id, {Type}, {17, 20}, variant("int")},
+        {Block, {Void}, {21, 42}, [
+            {ReturnStmt, {Void}, {27, 40}, [
+                {Sub, {Int}, {34, 39}, [
+                    {Id, {Int}, {34, 35}, variant("i")},
+                    {Int, {Int}, {38, 39}, variant(1)}
+                ]}
+            ]}
+        ]}
+    ]},
+    {Func, {Void}, {44, 168}, variant("main"), [
+        {Id, {Type}, {56, 59}, variant("int")},
+        {Block, {Void}, {60, 168}, [
+            {VarDecl, {Void}, {66, 88}, variant("total"), [
                 {Nil, {Void}, {0, 0}},
-                {Add, {Int}, {34, 43}, [
-                    {Int, {Int}, {34, 35}, variant(1)},
-                    {Mul, {Int}, {38, 43}, [
-                        {Int, {Int}, {38, 39}, variant(2)},
-                        {Int, {Int}, {42, 43}, variant(3)}
+                {Add, {Int}, {78, 87}, [
+                    {Int, {Int}, {78, 79}, variant(1)},
+                    {Mul, {Int}, {82, 87}, [
+                        {Int, {Int}, {82, 83}, variant(2)},
+                        {Int, {Int}, {86, 87}, variant(3)}
                     ]}
                 ]}
             ]},
-            {VarDecl, {Void}, {49, 63}, variant("i"), [
+            {VarDecl, {Void}, {93, 107}, variant("i"), [
                 {Nil, {Void}, {0, 0}},
-                {Id, {Int}, {57, 62}, variant("total")}
+                {Id, {Int}, {101, 106}, variant("total")}
             ]},
-            {WhileStmt, {Void}, {68, 186}, [
-                {GreaterThan, {Bool}, {74, 79}, [
-                    {Id, {Int}, {74, 75}, variant("i")},
-                    {Int, {Int}, {78, 79}, variant(0)}
+            {WhileStmt, {Void}, {112, 151}, [
+                {GreaterThan, {Bool}, {118, 123}, [
+                    {Id, {Int}, {118, 119}, variant("i")},
+                    {Int, {Int}, {122, 123}, variant(0)}
                 ]},
-                {Block, {Void}, {80, 186}, [
-                    {Assign, {Void}, {90, 100}, [
-                        {Id, {Int}, {90, 91}, variant("i")},
-                        {Sub, {Int}, {94, 99}, [
-                            {Id, {Int}, {94, 95}, variant("i")},
-                            {Int, {Int}, {98, 99}, variant(1)}
-                        ]}
-                    ]},
-                    {IfStmt, {Void}, {110, 180}, [
-                        {GreaterThan, {Bool}, {113, 126}, [
-                            {Id, {Int}, {113, 114}, variant("i")},
-                            {Div, {Int}, {117, 126}, [
-                                {Id, {Int}, {117, 122}, variant("total")},
-                                {Int, {Int}, {125, 126}, variant(2)}
-                            ]}
-                        ]},
-                        {Block, {Void}, {127, 138}},
-                        {IfStmt, {Void}, {144, 180}, [
-                            {LessThan, {Bool}, {147, 160}, [
-                                {Id, {Int}, {147, 148}, variant("i")},
-                                {Div, {Int}, {151, 160}, [
-                                    {Id, {Int}, {151, 156}, variant("total")},
-                                    {Int, {Int}, {159, 160}, variant(2)}
-                                ]}
-                            ]},
-                            {Block, {Void}, {161, 172}},
-                            {Block, {Void}, {178, 180}}
+                {Block, {Void}, {124, 151}, [
+                    {Assign, {Void}, {134, 145}, [
+                        {Id, {Int}, {134, 135}, variant("i")},
+                        {Call, {Int}, {138, 144}, [
+                            {Id, {Func, [{Int}, {Int}]}, {138, 141}, variant("sub")},
+                            {Id, {Int}, {142, 143}, variant("i")}
                         ]}
                     ]}
                 ]}
             ]},
-            {ReturnStmt, {Void}, {192, 201}, [
-                {Id, {Int}, {199, 200}, variant("i")}
+            {ReturnStmt, {Void}, {157, 166}, [
+                {Id, {Int}, {164, 165}, variant("i")}
             ]}
         ]}
     ]}

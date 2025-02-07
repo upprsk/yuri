@@ -8,7 +8,6 @@
 
 #include "ast.hpp"
 #include "error_reporter.hpp"
-#include "fmt/color.h"
 #include "span.hpp"
 #include "tokenizer.hpp"
 
@@ -323,10 +322,26 @@ struct Parser {
         if (peek().type != TokenType::Lparen) return expr;
         advance();
 
+        std::vector<AstNode> args;
+        if (peek().type != TokenType::Rparen) args = parse_call_args();
+
         auto end = span();
         try_consume(TokenType::Rparen, end, "expected ')'");
 
-        return AstNode::Call(expr.span.extend(end), expr, {});
+        return AstNode::Call(expr.span.extend(end), expr, args);
+    }
+
+    auto parse_call_args() -> std::vector<AstNode> {
+        std::vector<AstNode> args;
+
+        do {
+            args.push_back(parse_expr());
+
+            if (peek().type != TokenType::Comma) break;
+            advance();
+        } while (true);
+
+        return args;
     }
 
     auto parse_primary() -> AstNode {
