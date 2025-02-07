@@ -33,6 +33,7 @@ enum class TokenType : uint8_t {
     SlashEqual,
     Semi,
     Colon,
+    Comma,
     Lparen,
     Rparen,
     Lbrace,
@@ -76,6 +77,7 @@ struct Token {
     define_constructor(SlashEqual);
     define_constructor(Semi);
     define_constructor(Colon);
+    define_constructor(Comma);
     define_constructor(Lparen);
     define_constructor(Rparen);
     define_constructor(Lbrace);

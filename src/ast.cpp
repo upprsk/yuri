@@ -23,11 +23,14 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
             auto        e = env.child();
             auto const& name = std::get<std::string>(value);
 
-            // TODO: args
-            // auto args = [&] {
-            //     std::span nodes = children;
-            //     return nodes.subspan(0, children.size() - 2);
-            // }();
+            auto args = [&] {
+                std::span nodes = children;
+                return nodes.subspan(0, children.size() - 2);
+            }();
+
+            for (auto& arg : args) {
+                arg.add_types(e, er);
+            }
 
             auto ret_anon = children.at(children.size() - 2).add_types(e, er);
             if (!children.at(children.size() - 2).is_nil() &&
@@ -51,6 +54,9 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             env.define(name, Type::Func(ret));
 
+            return set_type(Type::Void());
+        }
+        case AstNodeKind::FuncDeclArg: {
             return set_type(Type::Void());
         }
         case AstNodeKind::VarDecl: {
@@ -266,6 +272,7 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::Nil: name = "Nil"; break;
         case T::SourceFile: name = "SourceFile"; break;
         case T::Func: name = "Func"; break;
+        case T::FuncDeclArg: name = "FuncDeclArg"; break;
         case T::VarDecl: name = "VarDecl"; break;
         case T::Block: name = "Block"; break;
         case T::ExprStmt: name = "ExprStmt"; break;

@@ -4,9 +4,10 @@ source_file ::= { top_decl } ;
 
 top_decl ::= func_decl ;
 
-(* TODO: function arguments *)
-func_decl ::= "func" ID "(" ")" [ expr ] block ;
+func_decl ::= "func" ID "(" [ func_decl_args ] ")" [ expr ] block ;
 var_decl  ::= "var" ID [ ":" expr ] "=" expr ";" ;
+
+func_decl_args ::= ID ":" expr [ "," [ func_decl_args ] ] ;
 
 (* stmts *)
 

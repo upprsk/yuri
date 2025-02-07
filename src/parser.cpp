@@ -90,7 +90,13 @@ struct Parser {
         auto name = peek();
         try_consume(TokenType::Id, name.span, "expected function name");
 
+        std::vector<AstNode> args;
+
         try_consume(TokenType::Lparen, prev_span(), "expected '('");
+        if (peek().type != TokenType::Rparen) {
+            args = parse_func_decl_args();
+        }
+
         try_consume(TokenType::Rparen, prev_span(), "expected ')'");
 
         auto ret = AstNode::Nil();
@@ -101,7 +107,28 @@ struct Parser {
         auto body = parse_block();
 
         return AstNode::Func(start.extend(body.span),
-                             std::string{name.span.str(source)}, {}, ret, body);
+                             std::string{name.span.str(source)}, args, ret,
+                             body);
+    }
+
+    auto parse_func_decl_args() -> std::vector<AstNode> {
+        std::vector<AstNode> args;
+
+        do {
+            auto name = peek();
+            if (!consume(TokenType::Id)) return args;
+            if (!consume(TokenType::Colon)) return args;
+            auto type = parse_expr();
+
+            args.push_back(AstNode::FuncArg(name.span.extend(type.span),
+                                            std::string{name.span.str(source)},
+                                            type));
+
+            if (peek().type != TokenType::Comma) break;
+            advance();
+        } while (true);
+
+        return args;
     }
 
     auto parse_var_decl() -> AstNode {

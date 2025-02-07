@@ -16,6 +16,7 @@ enum class AstNodeKind {
     Nil,
     SourceFile,
     Func,
+    FuncDeclArg,
     VarDecl,
     Block,
     ExprStmt,
@@ -68,6 +69,16 @@ struct AstNode {
             .children = std::move(children),
             .span = span,
             .kind = AstNodeKind::Func,
+        };
+    }
+
+    static auto FuncArg(Span span, std::string const& name, AstNode const& type)
+        -> AstNode {
+        return {
+            .value = name,
+            .children = {type},
+            .span = span,
+            .kind = AstNodeKind::FuncDeclArg,
         };
     }
 
