@@ -1,4 +1,4 @@
-func say_hello() void {}
+func say_hello() {}
 
 func main() int {
     var total = 1 + 2 * 3;

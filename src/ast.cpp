@@ -30,14 +30,20 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
             // }();
 
             auto ret_anon = children.at(children.size() - 2).add_types(e, er);
-            if (!ret_anon.is_type()) {
+            if (!children.at(children.size() - 2).is_nil() &&
+                !ret_anon.is_type()) {
                 er.report_error(children.at(children.size() - 2).span,
                                 "expected type for return type, got {}",
                                 ret_anon);
             }
 
-            auto ret_span = children.at(children.size() - 2).span;
-            auto ret = children.at(children.size() - 2).eval_to_type(e, er);
+            auto ret_span = children.at(children.size() - 2).is_nil()
+                                ? span
+                                : children.at(children.size() - 2).span;
+            auto ret =
+                children.at(children.size() - 2).is_nil()
+                    ? Type::Void()
+                    : children.at(children.size() - 2).eval_to_type(e, er);
 
             // function body
             auto be = e.with_return_type(&ret, ret_span);

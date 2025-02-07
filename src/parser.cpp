@@ -93,7 +93,11 @@ struct Parser {
         try_consume(TokenType::Lparen, prev_span(), "expected '('");
         try_consume(TokenType::Rparen, prev_span(), "expected ')'");
 
-        auto ret = parse_expr();
+        auto ret = AstNode::Nil();
+        if (peek().type != TokenType::Lbrace) {
+            ret = parse_expr();
+        }
+
         auto body = parse_block();
 
         return AstNode::Func(start.extend(body.span),
