@@ -32,7 +32,7 @@ void ErrorReporter::report(Span s, std::string_view prefix,
 
     if (isatty(STDERR_FILENO)) {
         fmt::print(stderr, color, "{0: <{1}}{0:^<{2}}", "",
-                   4 + 3 + s.begin - ls, s.size());
+                   4 + 3 + s.begin - ls, std::min(s.end, le) - s.begin);
     } else {
         fmt::print(stderr, "       {:<{}}", "^", le - ls);
     }
