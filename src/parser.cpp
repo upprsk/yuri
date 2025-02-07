@@ -254,7 +254,7 @@ struct Parser {
 
         if (t.type == TokenType::Int) {
             auto     s = t.span.str(source);
-            uint64_t value;
+            uint64_t value = 0xDEAD'BEEF;
 
             // NOTE: ignoring errors
             std::from_chars(s.data(), s.data() + s.length(), value);

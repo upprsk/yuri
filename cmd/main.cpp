@@ -10,6 +10,7 @@
 #include "fmt/ranges.h"  // IWYU pragma: keep
 #include "parser.hpp"
 #include "tokenizer.hpp"
+#include "types.hpp"
 
 auto read_entire_file(std::string const& path) -> std::optional<std::string> {
     std::unique_ptr<FILE, void (*)(FILE*)> f = {fopen(path.c_str(), "rb"),
@@ -47,9 +48,12 @@ auto main(int argc, char** argv) -> int {
 
         auto tokens = yuri::tokenize(&er, *contents);
         auto ast = yuri::parse(&er, *contents, tokens);
-        fmt::println("{}", ast);
 
-        ast.add_types();
+        yuri::Env env;
+        env.define("int", yuri::Type::make_type(), yuri::Type::Int());
+        env.define("void", yuri::Type::make_type(), yuri::Type::Void());
+
+        ast.add_types(env, er);
         fmt::println("{}", ast);
 
         return 0;

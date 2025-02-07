@@ -5,6 +5,8 @@
 #include <variant>
 #include <vector>
 
+#include "env.hpp"
+#include "error_reporter.hpp"
 #include "span.hpp"
 #include "types.hpp"
 
@@ -129,12 +131,13 @@ struct AstNode {
     constexpr auto left() const -> AstNode const& { return children.at(0); }
     constexpr auto right() const -> AstNode const& { return children.at(1); }
 
-    constexpr auto set_type(Type&& t) -> Type {
-        type = std::move(t);
-        return type;
-    }
+    constexpr auto is_lvalue() const -> bool { return kind == AstNodeKind::Id; }
+    constexpr auto is_nil() const -> bool { return kind == AstNodeKind::Nil; }
 
-    auto add_types() -> Type;
+    constexpr auto set_type(Type const& t) -> Type { return type = t; }
+
+    auto add_types(Env& env, ErrorReporter& er) -> Type;
+    auto eval_to_type(Env& env, ErrorReporter& er) -> Type;
 };
 
 }  // namespace yuri
