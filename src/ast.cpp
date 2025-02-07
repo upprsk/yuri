@@ -122,10 +122,9 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
             auto e = env.child();
             auto cond = children.at(0).add_types(e, er);
 
-            // TODO: add boolean types
-            if (!cond.is_integral()) {
+            if (!cond.is_bool()) {
                 er.report_error(children.at(0).span,
-                                "can't use non-integral {} in condition", cond);
+                                "can't use non-boolean {} in condition", cond);
             }
 
             auto be = e.child();
@@ -163,6 +162,22 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
             }
 
             return set_type(lhs);
+        }
+        case AstNodeKind::LessThan:
+        case AstNodeKind::LessThanEqual:
+        case AstNodeKind::GreaterThan:
+        case AstNodeKind::GreaterThanEqual:
+        case AstNodeKind::Equal: {
+            auto lhs = children.at(0).add_types(env, er);
+            auto rhs = children.at(1).add_types(env, er);
+
+            if (lhs != rhs) {
+                er.report_error(span, "incompatible types in comparison");
+                er.report_note(children.at(0).span, "this has type {}", lhs);
+                er.report_note(children.at(1).span, "this has type {}", rhs);
+            }
+
+            return set_type(Type::Bool());
         }
         case AstNodeKind::Id: {
             auto const& name = std::get<std::string>(value);
@@ -224,6 +239,11 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::Sub: name = "Sub"; break;
         case T::Mul: name = "Mul"; break;
         case T::Div: name = "Div"; break;
+        case T::LessThan: name = "LessThan"; break;
+        case T::LessThanEqual: name = "LessThanEqual"; break;
+        case T::GreaterThan: name = "GreaterThan"; break;
+        case T::GreaterThanEqual: name = "GreaterThanEqual"; break;
+        case T::Equal: name = "Equal"; break;
         case T::Id: name = "Id"; break;
         case T::Int: name = "Int"; break;
         case T::Err: name = "Err"; break;

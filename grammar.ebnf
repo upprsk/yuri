@@ -26,10 +26,10 @@ assign      ::= expr ("=" | "+=" | "-=" | "*=" | "/=") expr ";" ;
 
 (* exprs *)
 
-expr ::= additive ;
+expr ::= comparison ;
 
-additive ::= multiplicative [("+" | "-") additive ] ;
-
+comparison     ::= additive [ ("<", "<=", ">", ">=", "==") comparison ;
+additive       ::= multiplicative [ ("+" | "-") additive ] ;
 multiplicative ::= primary [ ("*" | "/") multiplicative ] ;
 
 primary ::= ID

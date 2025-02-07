@@ -14,6 +14,7 @@ auto fmt::formatter<yuri::TypeKind>::format(yuri::TypeKind  c,
         case T::Void: name = "Void"; break;
         case T::Func: name = "Func"; break;
         case T::Int: name = "Int"; break;
+        case T::Bool: name = "Bool"; break;
     }
 
     // return formatter<string_view>::format(name, ctx);

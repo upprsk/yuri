@@ -12,6 +12,7 @@ enum class TypeKind {
     Type,
     Func,
     Int,
+    Bool,
 };
 
 struct Type {
@@ -20,6 +21,7 @@ struct Type {
 
     constexpr auto is_void() const -> bool { return kind == TypeKind::Void; }
     constexpr auto is_type() const -> bool { return kind == TypeKind::Type; }
+    constexpr auto is_bool() const -> bool { return kind == TypeKind::Bool; }
 
     // NOTE: remember to add other integer types here in the future
     constexpr auto is_integral() const -> bool { return kind == TypeKind::Int; }
@@ -35,6 +37,7 @@ struct Type {
     }
 
     static auto Int() -> Type { return {.kind = TypeKind::Int}; }
+    static auto Bool() -> Type { return {.kind = TypeKind::Bool}; }
     static auto Err() -> Type { return {.kind = TypeKind::Err}; }
     static auto make_type() -> Type { return {.kind = TypeKind::Type}; }
 };

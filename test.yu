@@ -1,7 +1,6 @@
 func main() int {
-    var Int = int;
-    var i: Int = 1 + 2 * 3;
-    while i {
+    var i = 1 + 2 * 3;
+    while i > 0 {
         i = i - 1;
     }
 

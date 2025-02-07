@@ -201,7 +201,31 @@ struct Parser {
 
     // exprs ------------------------------------------------------------------
 
-    auto parse_expr() -> AstNode { return parse_additive(); }
+    auto parse_expr() -> AstNode { return parse_comparison(); }
+
+    auto parse_comparison() -> AstNode {
+        auto left = parse_additive();
+
+        auto        t = peek();
+        AstNodeKind kind;
+        if (t.type == TokenType::Less)
+            kind = AstNodeKind::LessThan;
+        else if (t.type == TokenType::LessEqual)
+            kind = AstNodeKind::LessThanEqual;
+        else if (t.type == TokenType::Greater)
+            kind = AstNodeKind::GreaterThan;
+        else if (t.type == TokenType::GreaterEqual)
+            kind = AstNodeKind::GreaterThanEqual;
+        else if (t.type == TokenType::EqualEqual)
+            kind = AstNodeKind::Equal;
+        else
+            return left;
+
+        advance();
+        AstNode right = parse_comparison();
+
+        return AstNode::Binary(left.span.extend(right.span), kind, left, right);
+    }
 
     auto parse_additive() -> AstNode {
         auto left = parse_multiplicative();
