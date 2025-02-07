@@ -20,6 +20,7 @@ enum class AstNodeKind {
     Block,
     ExprStmt,
     ReturnStmt,
+    IfStmt,
     WhileStmt,
     Assign,
     Add,
@@ -85,6 +86,15 @@ struct AstNode {
             .children = children,
             .span = span,
             .kind = AstNodeKind::Block,
+        };
+    }
+
+    static auto IfStmt(Span span, AstNode const& cond, AstNode const& wt,
+                       AstNode const& wf) -> AstNode {
+        return {
+            .children = {cond, wt, wf},
+            .span = span,
+            .kind = AstNodeKind::IfStmt,
         };
     }
 

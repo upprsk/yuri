@@ -128,6 +128,7 @@ struct Parser {
     auto parse_stmt() -> AstNode {
         auto t = peek();
         if (t.is_kw(source, "return")) return parse_return_stmt();
+        if (t.is_kw(source, "if")) return parse_if_stmt();
         if (t.is_kw(source, "while")) return parse_while_stmt();
         if (t.is_kw(source, "var")) return parse_var_decl();
 
@@ -185,6 +186,28 @@ struct Parser {
         try_consume(TokenType::Semi, prev_span(), "expected ';'");
 
         return AstNode::Unary(start.extend(end), AstNodeKind::ReturnStmt, expr);
+    }
+
+    auto parse_if_stmt() -> AstNode {
+        auto start = span();
+        if (!consume_id("if")) return AstNode::Err(start, "expected 'if'");
+
+        auto expr = parse_expr();
+        auto wt = parse_block();
+        auto wf = AstNode::Nil();
+
+        if (peek().is_kw(source, "else")) {
+            advance();
+
+            if (peek().is_kw(source, "if")) {
+                wf = parse_if_stmt();
+            } else {
+                wf = parse_block();
+            }
+        }
+
+        return AstNode::IfStmt(start.extend(wf.is_nil() ? wt.span : wf.span),
+                               expr, wt, wf);
     }
 
     auto parse_while_stmt() -> AstNode {

@@ -21,6 +21,7 @@ stmt ::= block
 block       ::= "{" { stmt } "}" ;
 expr_stmt   ::= expr ";" ;
 return_stmt ::= "return" expr ";" ;
+if_stmt     ::= "if" expr block [ "else" block | if_stmt ];
 while_stmt  ::= "while" expr block ;
 assign      ::= expr ("=" | "+=" | "-=" | "*=" | "/=") expr ";" ;
 

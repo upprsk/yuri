@@ -118,6 +118,25 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             return set_type(Type::Void());
         }
+        case AstNodeKind::IfStmt: {
+            auto e = env.child();
+            auto cond = children.at(0).add_types(e, er);
+
+            if (!cond.is_bool()) {
+                er.report_error(children.at(0).span,
+                                "can't use non-boolean {} in condition", cond);
+            }
+
+            auto be = e.child();
+            children.at(1).add_types(be, er);
+
+            if (!children.at(2).is_nil()) {
+                auto be = e.child();
+                children.at(2).add_types(be, er);
+            }
+
+            return set_type(Type::Void());
+        }
         case AstNodeKind::WhileStmt: {
             auto e = env.child();
             auto cond = children.at(0).add_types(e, er);
@@ -233,6 +252,7 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::Block: name = "Block"; break;
         case T::ExprStmt: name = "ExprStmt"; break;
         case T::ReturnStmt: name = "ReturnStmt"; break;
+        case T::IfStmt: name = "IfStmt"; break;
         case T::WhileStmt: name = "WhileStmt"; break;
         case T::Assign: name = "Assign"; break;
         case T::Add: name = "Add"; break;

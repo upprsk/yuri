@@ -1,7 +1,12 @@
 func main() int {
-    var i = 1 + 2 * 3;
+    var total = 1 + 2 * 3;
+    var i = total;
     while i > 0 {
         i = i - 1;
+
+        if i > total / 2 {
+        } else if i < total / 2 {
+        } else {}
     }
 
     return i;
