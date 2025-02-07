@@ -10,6 +10,7 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
 
     string_view name = "unknown";
     switch (c) {
+        case T::Nil: name = "Nil"; break;
         case T::SourceFile: name = "SourceFile"; break;
         case T::Func: name = "Func"; break;
         case T::VarDecl: name = "VarDecl"; break;

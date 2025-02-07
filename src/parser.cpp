@@ -107,7 +107,12 @@ struct Parser {
         auto name = peek();
         try_consume(TokenType::Id, name.span, "expected variable name");
 
-        // TODO: explicit typing
+        AstNode type = AstNode::Nil();
+        if (peek().type == TokenType::Colon) {
+            advance();
+            type = parse_expr();
+        }
+
         try_consume(TokenType::Equal, prev_span(), "expected '='");
 
         auto init = parse_expr();
@@ -115,7 +120,7 @@ struct Parser {
         try_consume(TokenType::Semi, prev_span(), "expected ';'");
 
         return AstNode::VarDecl(start.extend(end),
-                                std::string{name.span.str(source)}, init);
+                                std::string{name.span.str(source)}, type, init);
     }
 
     // stmts ------------------------------------------------------------------

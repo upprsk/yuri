@@ -10,6 +10,7 @@
 namespace yuri {
 
 enum class AstNodeKind {
+    Nil,
     SourceFile,
     Func,
     VarDecl,
@@ -33,6 +34,10 @@ struct AstNode {
     Span                                                span;
     AstNodeKind                                         kind;
 
+    static auto Nil() -> AstNode {
+        return {.children = {}, .span = {}, .kind = AstNodeKind::Nil};
+    }
+
     static auto SourceFile(Span span, std::vector<AstNode> const& children)
         -> AstNode {
         return {.children = children,
@@ -55,11 +60,11 @@ struct AstNode {
         };
     }
 
-    static auto VarDecl(Span span, std::string const& name, AstNode const& init)
-        -> AstNode {
+    static auto VarDecl(Span span, std::string const& name, AstNode const& type,
+                        AstNode const& init) -> AstNode {
         return {
             .value = name,
-            .children = {init},
+            .children = {type, init},
             .span = span,
             .kind = AstNodeKind::VarDecl,
         };

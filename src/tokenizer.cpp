@@ -100,6 +100,7 @@ struct Tokenizer {
                 if (match('=')) return Token::SlashEqual(span());
                 if (match('/')) return Token::SlashSlash(span());
                 return Token::Slash(span());
+            case ':': return Token::Colon(span());
             case ';': return Token::Semi(span());
             case '(': return Token::Lparen(span());
             case ')': return Token::Rparen(span());
@@ -182,6 +183,7 @@ auto fmt::formatter<yuri::TokenType>::format(yuri::TokenType t,
         case T::SlashSlash: name = "SlashSlash"; break;
         case T::SlashEqual: name = "SlashEqual"; break;
         case T::Semi: name = "Semi"; break;
+        case T::Colon: name = "Colon"; break;
         case T::Lparen: name = "Lparen"; break;
         case T::Rparen: name = "Rparen"; break;
         case T::Lbrace: name = "Lbrace"; break;
