@@ -29,7 +29,6 @@ enum class TokenType : uint8_t {
     StarStar,
     StarEqual,
     Slash,
-    SlashSlash,
     SlashEqual,
     Semi,
     Colon,
@@ -42,6 +41,7 @@ enum class TokenType : uint8_t {
     Rbracket,
     Id,
     Int,
+    Comment,
     Eof,
     Err,
 };
@@ -73,7 +73,6 @@ struct Token {
     define_constructor(StarStar);
     define_constructor(StarEqual);
     define_constructor(Slash);
-    define_constructor(SlashSlash);
     define_constructor(SlashEqual);
     define_constructor(Semi);
     define_constructor(Colon);
@@ -86,6 +85,7 @@ struct Token {
     define_constructor(Rbracket);
     define_constructor(Id);
     define_constructor(Int);
+    define_constructor(Comment);
     define_constructor(Eof);
     define_constructor(Err);
 
@@ -93,6 +93,7 @@ struct Token {
 
     constexpr auto is_eof() const -> bool { return type == TokenType::Eof; }
     constexpr auto is_id() const -> bool { return type == TokenType::Id; }
+    constexpr auto is_comment() const -> bool { return type == TokenType::Comment; }
 
     constexpr auto is_kw(std::string_view source, std::string_view s) const
         -> bool {

@@ -1,6 +1,8 @@
 add_library(yuri
     ast.cpp
     ast.hpp
+    codegen/mips.cpp
+    codegen/mips.hpp
     env.cpp
     env.hpp
     error_reporter.cpp

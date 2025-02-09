@@ -98,7 +98,7 @@ struct Tokenizer {
                 return Token::Star(span());
             case '/':
                 if (match('=')) return Token::SlashEqual(span());
-                if (match('/')) return Token::SlashSlash(span());
+                if (match('/')) return tokenize_comment();
                 return Token::Slash(span());
             case ':': return Token::Colon(span());
             case ';': return Token::Semi(span());
@@ -131,6 +131,12 @@ struct Tokenizer {
         while (is_alpha(peek()) || is_digit(peek()) || peek() == '_') advance();
 
         return Token::Id(span());
+    }
+
+    constexpr auto tokenize_comment() -> Token {
+        while (!is_at_end() && peek() != '\n') advance();
+
+        return Token::Comment(span());
     }
 
     constexpr void consume_whitespace() {
@@ -181,7 +187,6 @@ auto fmt::formatter<yuri::TokenType>::format(yuri::TokenType t,
         case T::StarStar: name = "StarStar"; break;
         case T::StarEqual: name = "StarEqual"; break;
         case T::Slash: name = "Slash"; break;
-        case T::SlashSlash: name = "SlashSlash"; break;
         case T::SlashEqual: name = "SlashEqual"; break;
         case T::Semi: name = "Semi"; break;
         case T::Colon: name = "Colon"; break;
@@ -194,6 +199,7 @@ auto fmt::formatter<yuri::TokenType>::format(yuri::TokenType t,
         case T::Rbracket: name = "Rbracket"; break;
         case T::Id: name = "Id"; break;
         case T::Int: name = "Int"; break;
+        case T::Comment: name = "Comment"; break;
         case T::Eof: name = "Eof"; break;
         case T::Err: name = "Err"; break;
     }

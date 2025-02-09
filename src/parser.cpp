@@ -31,7 +31,15 @@ struct Parser {
     }
 
     constexpr void advance() {
-        if (!is_at_end()) current++;
+        do {
+            current++;
+        } while (peek().is_comment());
+    }
+
+    constexpr void skip_comments() {
+        while (peek().is_comment()) {
+            current++;
+        }
     }
 
     constexpr auto is_at_end() const -> bool { return peek().is_eof(); }
@@ -69,6 +77,8 @@ struct Parser {
     // ------------------------------------------------------------------------
 
     auto parse_source_file() -> AstNode {
+        skip_comments();
+
         std::vector<AstNode> nodes;
 
         while (!is_at_end()) {

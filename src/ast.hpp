@@ -167,8 +167,11 @@ struct AstNode {
         };
     }
 
-    constexpr auto left() const -> AstNode const& { return children.at(0); }
-    constexpr auto right() const -> AstNode const& { return children.at(1); }
+    constexpr auto first() const -> AstNode const& { return children.at(0); }
+    constexpr auto second() const -> AstNode const& { return children.at(1); }
+    constexpr auto last() const -> AstNode const& {
+        return children.at(children.size() - 1);
+    }
 
     constexpr auto is_lvalue() const -> bool { return kind == AstNodeKind::Id; }
     constexpr auto is_nil() const -> bool { return kind == AstNodeKind::Nil; }

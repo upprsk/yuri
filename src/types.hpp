@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
 
 #include "fmt/base.h"
@@ -27,6 +28,19 @@ struct Type {
 
     // NOTE: remember to add other integer types here in the future
     constexpr auto is_integral() const -> bool { return kind == TypeKind::Int; }
+
+    constexpr auto bytesize() const -> uint32_t {
+        switch (kind) {
+            case TypeKind::Err:
+            case TypeKind::Void:
+            case TypeKind::Type:
+            case TypeKind::Func: return 0;
+            case TypeKind::Int:
+            case TypeKind::Bool: return 4;
+        }
+
+        return 0;
+    }
 
     constexpr auto operator==(Type const& o) const -> bool {
         return kind == o.kind && inner == o.inner;

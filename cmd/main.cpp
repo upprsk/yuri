@@ -3,6 +3,7 @@
 #include <optional>
 #include <string>
 
+#include "codegen/mips.hpp"
 #include "cpptrace/from_current.hpp"
 #include "error_reporter.hpp"
 #include "fmt/base.h"
@@ -54,7 +55,9 @@ auto main(int argc, char** argv) -> int {
         env.define("void", yuri::Type::make_type(), yuri::Type::Void());
 
         ast.add_types(env, er);
-        fmt::println("{}", ast);
+        // fmt::println("{}", ast);
+
+        yuri::mips::codegen(ast, stdout, er);
 
         return 0;
     }

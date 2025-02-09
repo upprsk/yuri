@@ -109,7 +109,7 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
                 env.define(name, type, children.at(1).eval_to_type(e, er));
             }
 
-            return set_type(Type::Void());
+            return set_type(type);
         }
         case AstNodeKind::Block: {
             auto e = env.child();
