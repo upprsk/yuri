@@ -30,9 +30,9 @@ assign      ::= expr ("=" | "+=" | "-=" | "*=" | "/=") expr ";" ;
 
 expr ::= comparison ;
 
-comparison     ::= additive [ ("<", "<=", ">", ">=", "==") comparison ;
-additive       ::= multiplicative [ ("+" | "-") additive ] ;
-multiplicative ::= call [ ("*" | "/") multiplicative ] ;
+comparison     ::= additive { ("<", "<=", ">", ">=", "==") additive } ;
+additive       ::= multiplicative { ("+" | "-") multiplicative } ;
+multiplicative ::= call { ("*" | "/") call } ;
 call           ::= primary [ "(" call_args ")" ] ;
 
 call_args ::= expr [ "," call_args ] ;

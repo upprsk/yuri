@@ -269,61 +269,76 @@ struct Parser {
     auto parse_comparison() -> AstNode {
         auto left = parse_additive();
 
-        auto        t = peek();
-        AstNodeKind kind;
-        if (t.type == TokenType::Less)
-            kind = AstNodeKind::LessThan;
-        else if (t.type == TokenType::LessEqual)
-            kind = AstNodeKind::LessThanEqual;
-        else if (t.type == TokenType::Greater)
-            kind = AstNodeKind::GreaterThan;
-        else if (t.type == TokenType::GreaterEqual)
-            kind = AstNodeKind::GreaterThanEqual;
-        else if (t.type == TokenType::EqualEqual)
-            kind = AstNodeKind::Equal;
-        else
-            return left;
+        while (true) {
+            auto        t = peek();
+            AstNodeKind kind;
+            if (t.type == TokenType::Less)
+                kind = AstNodeKind::LessThan;
+            else if (t.type == TokenType::LessEqual)
+                kind = AstNodeKind::LessThanEqual;
+            else if (t.type == TokenType::Greater)
+                kind = AstNodeKind::GreaterThan;
+            else if (t.type == TokenType::GreaterEqual)
+                kind = AstNodeKind::GreaterThanEqual;
+            else if (t.type == TokenType::EqualEqual)
+                kind = AstNodeKind::Equal;
+            else
+                break;
 
-        advance();
-        AstNode right = parse_comparison();
+            advance();
+            AstNode right = parse_additive();
 
-        return AstNode::Binary(left.span.extend(right.span), kind, left, right);
+            left = AstNode::Binary(left.span.extend(right.span), kind, left,
+                                   right);
+        }
+
+        return left;
     }
 
     auto parse_additive() -> AstNode {
         auto left = parse_multiplicative();
 
-        auto        t = peek();
-        AstNodeKind kind;
-        if (t.type == TokenType::Plus)
-            kind = AstNodeKind::Add;
-        else if (t.type == TokenType::Minus)
-            kind = AstNodeKind::Sub;
-        else
-            return left;
+        while (true) {
+            auto        t = peek();
+            AstNodeKind kind;
+            if (t.type == TokenType::Plus)
+                kind = AstNodeKind::Add;
+            else if (t.type == TokenType::Minus)
+                kind = AstNodeKind::Sub;
+            else
+                break;
 
-        advance();
-        AstNode right = parse_additive();
+            advance();
+            AstNode right = parse_multiplicative();
 
-        return AstNode::Binary(left.span.extend(right.span), kind, left, right);
+            left = AstNode::Binary(left.span.extend(right.span), kind, left,
+                                   right);
+        }
+
+        return left;
     }
 
     auto parse_multiplicative() -> AstNode {
         auto left = parse_call();
 
-        auto        t = peek();
-        AstNodeKind kind;
-        if (t.type == TokenType::Star)
-            kind = AstNodeKind::Mul;
-        else if (t.type == TokenType::Slash)
-            kind = AstNodeKind::Div;
-        else
-            return left;
+        while (true) {
+            auto        t = peek();
+            AstNodeKind kind;
+            if (t.type == TokenType::Star)
+                kind = AstNodeKind::Mul;
+            else if (t.type == TokenType::Slash)
+                kind = AstNodeKind::Div;
+            else
+                break;
 
-        advance();
-        AstNode right = parse_multiplicative();
+            advance();
+            AstNode right = parse_call();
 
-        return AstNode::Binary(left.span.extend(right.span), kind, left, right);
+            left = AstNode::Binary(left.span.extend(right.span), kind, left,
+                                   right);
+        }
+
+        return left;
     }
 
     auto parse_call() -> AstNode {
