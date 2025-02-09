@@ -116,54 +116,30 @@ struct Local {
     uint32_t    size;
 };
 
+struct Func {
+    std::string name;
+    uint32_t    stack_size;
+
+    std::vector<Instr> body;
+};
+
 struct CodegenFunc {
     static constexpr size_t reg_tmp_base = 8;
     static constexpr size_t reg_sp = 29;
     static constexpr size_t reg_ra = 31;
 
-    // ------------------------------------------------------------------------
-
-    void gen_local_offsets() { gen_block_offsets(func->last()); }
-
-    void gen_block_offsets(AstNode const& block) {
-        if (block.kind != AstNodeKind::Block) {
-            er->report_error(block.span, "expected block, got {}", block);
-            return;
-        }
-
-        for (auto const& stmt : block.children) {
-            gen_stmt_offsets(stmt);
-        }
-    };
-
-    void gen_stmt_offsets(AstNode const& node) {
-        switch (node.kind) {
-            case AstNodeKind::VarDecl: {
-                auto const& name = std::get<std::string>(node.value);
-                auto const  size = node.type.bytesize();
-
-                auto const offset = stack_top;
-                stack_top += size;
-
-                locals.push_back(
-                    {.name = name, .offset = offset, .size = size});
-            } break;
-
-            case AstNodeKind::Block: {
-                codegen_block(node);
-            } break;
-
-            default: break;
-        }
-    }
+    static constexpr size_t word_size = 4;  // 32bit words
 
     // ------------------------------------------------------------------------
 
-    void codegen() {
+    auto codegen() -> Func {
         gen_local_offsets();
 
         auto const& body = func->last();
         codegen_body(body);
+
+        auto const& name = std::get<std::string>(func->value);
+        return {.name = name, .stack_size = stack_top, .body = this->body};
     }
 
     void codegen_body(AstNode const& node) {
@@ -177,7 +153,29 @@ struct CodegenFunc {
             .value = -static_cast<uint16_t>(stack_frame_size),
         });
 
+        auto ra_var = locals.at(0);
+        if (ra_var.name != "") {
+            er->report_error(node.span,
+                             "something is very wrong, `$ra` is not in the "
+                             "implicit first local");
+            return;
+        }
+
+        out({
+            .op = Opcode::Sw,
+            .r = reg_ra,
+            .a = reg_sp,
+            .value = sp_offset(ra_var.offset),
+        });
+
         codegen_block(node);
+
+        out({
+            .op = Opcode::Lw,
+            .r = reg_ra,
+            .a = reg_sp,
+            .value = sp_offset(ra_var.offset),
+        });
 
         out({
             .op = Opcode::Addiu,
@@ -394,6 +392,49 @@ struct CodegenFunc {
 
     // ------------------------------------------------------------------------
 
+    void add_local(std::string const& name, uint32_t size) {
+        auto const offset = stack_top;
+        stack_top += size;
+        locals.push_back({.name = name, .offset = offset, .size = size});
+    }
+
+    void gen_local_offsets() {
+        // add a place to put our return address. The name is empty, so it can
+        // never be matched by real variables
+        add_local("", word_size);
+
+        gen_block_offsets(func->last());
+    }
+
+    void gen_block_offsets(AstNode const& block) {
+        if (block.kind != AstNodeKind::Block) {
+            er->report_error(block.span, "expected block, got {}", block);
+            return;
+        }
+
+        for (auto const& stmt : block.children) {
+            gen_stmt_offsets(stmt);
+        }
+    };
+
+    void gen_stmt_offsets(AstNode const& node) {
+        switch (node.kind) {
+            case AstNodeKind::VarDecl: {
+                auto const& name = std::get<std::string>(node.value);
+                auto const  size = node.type.bytesize();
+                add_local(name, size);
+            } break;
+
+            case AstNodeKind::Block: {
+                codegen_block(node);
+            } break;
+
+            default: break;
+        }
+    }
+
+    // ------------------------------------------------------------------------
+
     auto lookup_local(std::string_view name) const -> Local const* {
         for (auto const& l : locals) {
             if (l.name == name) return &l;
@@ -402,9 +443,10 @@ struct CodegenFunc {
         return nullptr;
     }
 
+    // NOTE: this is here just as a hook to allow easy change of how we locate
+    // stack variables
     constexpr auto sp_offset(uint32_t offset) const -> int32_t {
-        auto word_size = 4;  // 32bit words
-        return stack_top - word_size - offset;
+        return offset;
     }
 
     constexpr auto pop_tmp() -> uint8_t { return --reg_top + reg_tmp_base; }
@@ -430,11 +472,17 @@ struct Codegen {
             return;
         }
 
+        std::vector<Func> funcs;
+
         for (auto const& decl : node.children) {
             auto c = CodegenFunc{.func = &decl, .er = er};
-            c.codegen();
+            funcs.push_back(c.codegen());
+        }
 
-            for (auto const& o : c.body) {
+        for (auto const& f : funcs) {
+            fmt::println("{}:", f.name);
+
+            for (auto const& o : f.body) {
                 fmt::println("  {}", o);
             }
         }
