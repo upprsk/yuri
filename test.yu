@@ -11,7 +11,11 @@ func main() int {
     //
     // return i;
 
-    var a = 1 + 2 + 3 - 2;
-    var b = a + a;
-    var c = (a - b) + 2;
+    var a = 1 + 2 + 3 - 2; // 4
+    var b = a + a;         // 8
+    var c = (a - b) + 2;   // -2
+
+    a = b + c; // 6
+
+    var d = a + 10; // 16
 }

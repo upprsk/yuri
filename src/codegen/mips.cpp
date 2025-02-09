@@ -231,9 +231,38 @@ struct CodegenFunc {
             case AstNodeKind::ReturnStmt:
             case AstNodeKind::IfStmt:
             case AstNodeKind::WhileStmt:
-            case AstNodeKind::Assign:
                 er->report_error(node.span, "not implemented: {}", node);
                 break;
+
+            case AstNodeKind::Assign: {
+                auto lhs = node.first();
+                if (lhs.kind != AstNodeKind::Id) {
+                    er->report_error(node.span, "left is not an lvalue: {}",
+                                     lhs);
+                    return;
+                }
+
+                auto const& name = std::get<std::string>(lhs.value);
+                auto        local = lookup_local(name);
+                if (!local) {
+                    er->report_error(node.span, "undefined name: {}", name);
+                    return;
+                }
+
+                codegen_expr(node.second());
+                auto e = pop_tmp();
+
+                if (lhs.type.bytesize() == 0) {
+                    er->report_error(node.span, "lhs has zero-width type: {}",
+                                     lhs.type);
+                    return;
+                }
+
+                out({.op = Opcode::Sw,
+                     .r = e,
+                     .a = reg_sp,
+                     .value = sp_offset(local->offset)});
+            } break;
 
             case AstNodeKind::Err:
             case AstNodeKind::Nil:
