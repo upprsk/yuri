@@ -173,6 +173,14 @@ struct AstNode {
         return children.at(children.size() - 1);
     }
 
+    constexpr auto value_string() const -> std::string const& {
+        return std::get<std::string>(value);
+    }
+
+    constexpr auto value_int() const -> uint64_t {
+        return std::get<uint64_t>(value);
+    }
+
     constexpr auto is_lvalue() const -> bool { return kind == AstNodeKind::Id; }
     constexpr auto is_nil() const -> bool { return kind == AstNodeKind::Nil; }
 

@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdint>
 #include <limits>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -18,23 +19,39 @@ namespace yuri::mips {
 enum class Opcode : uint8_t {
     Err,
     Li,
+    Move,
     Addiu,
     Addu,
     Subu,
+    Seq,
     Slt,
     Sltu,
+    Sgt,
+    Sgtu,
     Lw,
     Sw,
+    J,
+    Jal,
     Jr,
+    B,
+    Beq,
+    Bne,
 };
 
 struct Instr {
-    Opcode  op;
-    uint8_t r;
-    uint8_t a{};
-    uint8_t b{};
-    int32_t value{};
+    Opcode      op;
+    uint8_t     r;
+    uint8_t     a{};
+    uint8_t     b{};
+    int32_t     value{};
+    std::string name{};
 };
+
+struct Label {
+    uint32_t id;
+    uint32_t offset;
+};
+
 }  // namespace yuri::mips
 
 template <>
@@ -47,14 +64,23 @@ struct fmt::formatter<yuri::mips::Opcode> : formatter<string_view> {
         switch (c) {
             case T::Err: name = "Err"; break;
             case T::Li: name = "li"; break;
+            case T::Move: name = "move"; break;
             case T::Addiu: name = "addiu"; break;
             case T::Addu: name = "addu"; break;
             case T::Subu: name = "subu"; break;
+            case T::Seq: name = "seq"; break;
             case T::Slt: name = "slt"; break;
             case T::Sltu: name = "sltu"; break;
+            case T::Sgt: name = "sgt"; break;
+            case T::Sgtu: name = "sgtu"; break;
             case T::Lw: name = "lw"; break;
             case T::Sw: name = "sw"; break;
+            case T::J: name = "j"; break;
+            case T::Jal: name = "jal"; break;
             case T::Jr: name = "jr"; break;
+            case T::B: name = "b"; break;
+            case T::Beq: name = "beq"; break;
+            case T::Bne: name = "bne"; break;
         }
         return formatter<string_view>::format(name, ctx);
     }
@@ -84,14 +110,21 @@ struct fmt::formatter<yuri::mips::Instr> {
                 return fmt::format_to(ctx.out(), "{} {}, {}", t.op, regs[t.r],
                                       t.value);
 
+            case yuri::mips::Opcode::Move:
+                return fmt::format_to(ctx.out(), "{} {}, {}", t.op, regs[t.r],
+                                      regs[t.a]);
+
             case yuri::mips::Opcode::Addiu:
                 return fmt::format_to(ctx.out(), "{} {}, {}, {}", t.op,
                                       regs[t.r], regs[t.a], t.value);
 
             case yuri::mips::Opcode::Addu:
             case yuri::mips::Opcode::Subu:
+            case yuri::mips::Opcode::Seq:
             case yuri::mips::Opcode::Slt:
             case yuri::mips::Opcode::Sltu:
+            case yuri::mips::Opcode::Sgt:
+            case yuri::mips::Opcode::Sgtu:
                 return fmt::format_to(ctx.out(), "{} {}, {}, {}", t.op,
                                       regs[t.r], regs[t.a], regs[t.b]);
 
@@ -100,8 +133,19 @@ struct fmt::formatter<yuri::mips::Instr> {
                 return fmt::format_to(ctx.out(), "{} {}, {}({})", t.op,
                                       regs[t.r], t.value, regs[t.a]);
 
+            case yuri::mips::Opcode::J:
+            case yuri::mips::Opcode::Jal:
+                return fmt::format_to(ctx.out(), "{} {}", t.op, t.name);
             case yuri::mips::Opcode::Jr:
                 return fmt::format_to(ctx.out(), "{} {}", t.op, regs[t.r]);
+
+            case yuri::mips::Opcode::B:
+                return fmt::format_to(ctx.out(), "{} .label_{}", t.op, t.value);
+
+            case yuri::mips::Opcode::Beq:
+            case yuri::mips::Opcode::Bne:
+                return fmt::format_to(ctx.out(), "{} {}, {}, .label_{}", t.op,
+                                      regs[t.a], regs[t.b], t.value);
         }
 
         return fmt::format_to(ctx.out(), "{{{}}}", t.op);
@@ -121,12 +165,16 @@ struct Func {
     uint32_t    stack_size;
 
     std::vector<Instr> body;
+    std::vector<Label> labels;
 };
 
 struct CodegenFunc {
     static constexpr size_t reg_tmp_base = 8;
+    static constexpr size_t reg_v0 = 2;
     static constexpr size_t reg_sp = 29;
     static constexpr size_t reg_ra = 31;
+
+    static constexpr size_t reg_args_base = 4;
 
     static constexpr size_t word_size = 4;  // 32bit words
 
@@ -134,16 +182,18 @@ struct CodegenFunc {
 
     auto codegen() -> Func {
         gen_local_offsets();
+        codegen_body(func->last());
 
-        auto const& body = func->last();
-        codegen_body(body);
-
-        auto const& name = std::get<std::string>(func->value);
-        return {.name = name, .stack_size = stack_top, .body = this->body};
+        auto const& name = func->value_string();
+        return {.name = name,
+                .stack_size = stack_top,
+                .body = body,
+                .labels = labels};
     }
 
     void codegen_body(AstNode const& node) {
         auto stack_frame_size = ALIGN(stack_top);
+        ret_label = gen_label();
 
         out({
             .op = Opcode::Addiu,
@@ -168,7 +218,32 @@ struct CodegenFunc {
             .value = sp_offset(ra_var.offset),
         });
 
+        std::span args = func->children;
+        args = args.subspan(0, args.size() - 2);
+
+        size_t i{};
+        for (auto const& arg : args) {
+            if (arg.kind != AstNodeKind::FuncDeclArg) {
+                er->report_error(arg.span, "expected function argument, got {}",
+                                 arg);
+                continue;
+            }
+
+            auto l = lookup_local(arg.value_string());
+
+            out({
+                .op = Opcode::Sw,
+                .r = static_cast<uint8_t>(reg_args_base + i),
+                .a = reg_sp,
+                .value = sp_offset(l->offset),
+            });
+
+            i++;
+        }
+
         codegen_block(node);
+
+        add_label(ret_label);
 
         out({
             .op = Opcode::Lw,
@@ -189,6 +264,8 @@ struct CodegenFunc {
     }
 
     void codegen_block(AstNode const& node) {
+        // er->report_note(node.span, "codegen_block({})", node);
+
         if (node.kind != AstNodeKind::Block) {
             er->report_error(node.span,
                              "expected block for function body, got {}", node);
@@ -201,9 +278,11 @@ struct CodegenFunc {
     }
 
     void codegen_stmt(AstNode const& node) {
+        // er->report_note(node.span, "codegen_stmt({})", node);
+
         switch (node.kind) {
             case AstNodeKind::VarDecl: {
-                auto const& name = std::get<std::string>(node.value);
+                auto const& name = node.value_string();
                 auto        local = lookup_local(name);
                 if (!local) {
                     er->report_error(node.span, "undefined name: {}", name);
@@ -224,13 +303,43 @@ struct CodegenFunc {
             case AstNodeKind::Block: {
                 codegen_block(node);
             } break;
+            case AstNodeKind::ExprStmt: {
+                codegen_expr(node.first());
+                pop_tmp();
+            } break;
+            case AstNodeKind::ReturnStmt: {
+                codegen_expr(node.first());
+                out({.op = Opcode::Move, .r = reg_v0, .a = pop_tmp()});
 
-            case AstNodeKind::ExprStmt:
-            case AstNodeKind::ReturnStmt:
+                out({.op = Opcode::B,
+                     .r = 0,  // unused
+                     .value = static_cast<int32_t>(ret_label)});
+            } break;
+
             case AstNodeKind::IfStmt:
-            case AstNodeKind::WhileStmt:
                 er->report_error(node.span, "not implemented: {}", node);
                 break;
+
+            case AstNodeKind::WhileStmt: {
+                auto cond_label = gen_label();
+                auto end_label = gen_label();
+                add_label(cond_label);
+
+                codegen_expr(node.first());
+                auto cond = pop_tmp();
+                out({.op = Opcode::Beq,
+                     .r = 0,
+                     .a = cond,
+                     .b = 0,
+                     .value = static_cast<int32_t>(end_label)});
+
+                codegen_block(node.second());
+                out({.op = Opcode::B,
+                     .r = 0,  // unused
+                     .value = static_cast<int32_t>(cond_label)});
+
+                add_label(end_label);
+            } break;
 
             case AstNodeKind::Assign: {
                 auto lhs = node.first();
@@ -240,7 +349,7 @@ struct CodegenFunc {
                     return;
                 }
 
-                auto const& name = std::get<std::string>(lhs.value);
+                auto const& name = lhs.value_string();
                 auto        local = lookup_local(name);
                 if (!local) {
                     er->report_error(node.span, "undefined name: {}", name);
@@ -286,6 +395,8 @@ struct CodegenFunc {
     }
 
     void codegen_expr(AstNode const& node) {
+        // er->report_note(node.span, "codegen_expr({})", node);
+
         auto const binop = [&](auto&& out) {
             codegen_expr(node.first());
             codegen_expr(node.second());
@@ -328,7 +439,7 @@ struct CodegenFunc {
             case AstNodeKind::GreaterThan:
                 // TODO: signed vs unsigned?
                 binop([&](auto r, auto a, auto b) {
-                    out({.op = Opcode::Slt, .r = r, .a = b, .b = a});
+                    out({.op = Opcode::Sgt, .r = r, .a = a, .b = b});
                 });
                 break;
 
@@ -337,12 +448,68 @@ struct CodegenFunc {
                 break;
 
             case AstNodeKind::Equal:
-            case AstNodeKind::Call:
-                er->report_error(node.span, "not implemented: {}", node);
+                binop([&](auto r, auto a, auto b) {
+                    out({.op = Opcode::Seq, .r = r, .a = a, .b = b});
+                });
                 break;
 
+            case AstNodeKind::Call: {
+                if (node.first().kind != AstNodeKind::Id) {
+                    er->report_error(node.span, "can't call: {}", node.first());
+                    return;
+                }
+
+                auto const& name = node.first().value_string();
+
+                Func const* found = nullptr;
+                for (auto const& f : all_funcs) {
+                    if (f.name == name) {
+                        found = &f;
+                        break;
+                    }
+                }
+
+                if (!found) {
+                    er->report_error(node.span, "undefined function: {}", name);
+                    return;
+                }
+
+                std::span args = node.children;
+                args = args.subspan(1);
+                if (args.size() > 4) {
+                    er->report_error(node.span,
+                                     "can't call functions with more than 4 "
+                                     "arguments (got {})",
+                                     args.size());
+                    return;
+                }
+
+                for (auto const& arg : args) {
+                    codegen_expr(arg);
+                }
+
+                for (size_t i = 0; i < args.size(); i++) {
+                    auto v = pop_tmp();
+                    out({.op = Opcode::Move,
+                         .r = static_cast<uint8_t>(reg_args_base + i),
+                         .a = v});
+                }
+
+                if (reg_top) {
+                    er->report_error(
+                        node.span,
+                        "have registers that could be lost: reg_top={}",
+                        reg_top);
+                }
+
+                out({.op = Opcode::Jal, .r = 0, .name = found->name});
+
+                auto ret = push_tmp();  // the return value
+                out({.op = Opcode::Move, .r = ret, .a = reg_v0});
+            } break;
+
             case AstNodeKind::Id: {
-                auto const& name = std::get<std::string>(node.value);
+                auto const& name = node.value_string();
                 auto        local = lookup_local(name);
                 if (!local) {
                     er->report_error(node.span, "undefined name: {}", name);
@@ -358,7 +525,7 @@ struct CodegenFunc {
             } break;
 
             case AstNodeKind::Int: {
-                auto const& v = std::get<uint64_t>(node.value);
+                auto const& v = node.value_int();
                 if (v > std::numeric_limits<uint16_t>::max()) {
                     er->report_error(
                         node.span,
@@ -403,6 +570,18 @@ struct CodegenFunc {
         // never be matched by real variables
         add_local("", word_size);
 
+        std::span args = func->children;
+        args = args.subspan(0, args.size() - 2);
+        for (auto const& arg : args) {
+            if (arg.kind != AstNodeKind::FuncDeclArg) {
+                er->report_error(arg.span, "expected function argument, got {}",
+                                 arg);
+                continue;
+            }
+
+            add_local(arg.value_string(), arg.type.bytesize());
+        }
+
         gen_block_offsets(func->last());
     }
 
@@ -420,7 +599,7 @@ struct CodegenFunc {
     void gen_stmt_offsets(AstNode const& node) {
         switch (node.kind) {
             case AstNodeKind::VarDecl: {
-                auto const& name = std::get<std::string>(node.value);
+                auto const& name = node.value_string();
                 auto const  size = node.type.bytesize();
                 add_local(name, size);
             } break;
@@ -453,14 +632,24 @@ struct CodegenFunc {
     constexpr auto push_tmp() -> uint8_t { return reg_top++ + reg_tmp_base; }
     void           out(Instr const i) { body.push_back(i); }
 
+    constexpr auto gen_label() -> uint32_t { return next_label++; }
+    void           add_label(uint32_t id) {
+        labels.push_back(
+            {.id = id, .offset = static_cast<uint32_t>(body.size())});
+    }
+
     // ------------------------------------------------------------------------
 
-    AstNode const* func;
+    AstNode const*        func;
+    std::span<Func const> all_funcs;
 
     ErrorReporter*     er;
     std::vector<Instr> body{};
+    std::vector<Label> labels{};
     std::vector<Local> locals{};
 
+    uint32_t ret_label{};
+    uint32_t next_label{};
     uint32_t stack_top{};
     uint8_t  reg_top{};
 };
@@ -475,23 +664,29 @@ struct Codegen {
         std::vector<Func> funcs;
 
         for (auto const& decl : node.children) {
-            auto c = CodegenFunc{.func = &decl, .er = er};
+            auto c = CodegenFunc{.func = &decl, .all_funcs = funcs, .er = er};
             funcs.push_back(c.codegen());
         }
 
         for (auto const& f : funcs) {
             fmt::println("{}:", f.name);
 
+            uint32_t i{};
+            uint32_t j{};
             for (auto const& o : f.body) {
+                if (j < f.labels.size() && f.labels.at(j).offset == i) {
+                    fmt::println("  .label_{}:", f.labels.at(j).id);
+                    j++;
+                }
+
                 fmt::println("  {}", o);
+
+                i++;
             }
+
+            fmt::println("# end of {}", f.name);
         }
     }
-
-    auto pop() -> uint8_t { return --top; }
-    auto push() -> uint8_t { return top++; }
-
-    void out(Instr const i) { output.push_back(i); }
 
     ErrorReporter* er;
 

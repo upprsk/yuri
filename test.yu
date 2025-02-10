@@ -1,21 +1,13 @@
-// func sub(i: int) int {
-//     return i - 1;
-// }
+func inc(i: int) int {
+    return i + 1;
+}
 
 func main() int {
-    // var total = 1 + 2 * 3;
-    // var i = total;
-    // while i > 0 {
-    //     i = sub(i);
-    // }
-    //
+    var total = 1 + 2 - 3;
+    var i = total;
+    while i < 10 {
+        i = inc(i);
+    }
+
     // return i;
-
-    var a = 1 + 2 + 3 - 2; // 4
-    var b = a + a;         // 8
-    var c = (a - b) + 2;   // -2
-
-    a = b + c; // 6
-
-    var d = a + 10; // 16
 }

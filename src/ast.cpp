@@ -59,6 +59,8 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             env.define(name, Type::Func(arg_types, ret));
 
+            // TODO: check if value was returned
+
             return set_type(Type::Void());
         }
         case AstNodeKind::FuncDeclArg: {
