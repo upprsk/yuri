@@ -19,6 +19,8 @@ struct Span {
     constexpr auto extend(Span o) const -> Span {
         return {.begin = begin, .end = o.end};
     }
+
+    constexpr auto operator==(Span const& o) const -> bool = default;
 };
 
 }  // namespace yuri

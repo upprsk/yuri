@@ -1,13 +1,20 @@
-func inc(i: int) int {
-    return i + 1;
-}
+// func inc(i: int) int {
+//     return i + 1;
+// }
+// 
+// func main() int {
+//     var total = 1 + 2 - 3;
+//     var i = total;
+//     while i < 10 {
+//         i = inc(i);
+//     }
+// 
+//     // return i;
+// }
 
 func main() int {
-    var total = 1 + 2 - 3;
-    var i = total;
-    while i < 10 {
-        i = inc(i);
-    }
+    var a = 12;
+    var b = 32;
 
-    // return i;
+    return a + b - 2;
 }

@@ -4,6 +4,8 @@
 #include <string>
 
 #include "codegen/mips.hpp"
+#include "codegen/mips2.hpp"
+#include "codegen/ssir.hpp"
 #include "cpptrace/from_current.hpp"
 #include "error_reporter.hpp"
 #include "fmt/base.h"
@@ -57,7 +59,10 @@ auto main(int argc, char** argv) -> int {
         ast.add_types(env, er);
         // fmt::println("{}", ast);
 
-        yuri::mips::codegen(ast, stdout, er);
+        auto m = yuri::ssir::codegen(ast, er);
+        yuri::ssir::dump_module(m);
+
+        yuri::mips::v2::codegen_stdout(m, er);
 
         return 0;
     }

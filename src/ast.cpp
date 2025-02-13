@@ -57,11 +57,12 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
                 arg_types.push_back(arg.type);
             }
 
-            env.define(name, Type::Func(arg_types, ret));
+            auto ty = Type::Func(arg_types, ret);
+            env.define(name, ty);
 
             // TODO: check if value was returned
 
-            return set_type(Type::Void());
+            return set_type(ty);
         }
         case AstNodeKind::FuncDeclArg: {
             auto const& name = std::get<std::string>(value);

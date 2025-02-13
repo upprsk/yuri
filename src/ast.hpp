@@ -182,7 +182,15 @@ struct AstNode {
     }
 
     constexpr auto is_lvalue() const -> bool { return kind == AstNodeKind::Id; }
+
     constexpr auto is_nil() const -> bool { return kind == AstNodeKind::Nil; }
+    constexpr auto is_func() const -> bool { return kind == AstNodeKind::Func; }
+    constexpr auto is_block() const -> bool {
+        return kind == AstNodeKind::Block;
+    }
+    constexpr auto is_source_file() const -> bool {
+        return kind == AstNodeKind::SourceFile;
+    }
 
     constexpr auto set_type(Type const& t) -> Type { return type = t; }
 
