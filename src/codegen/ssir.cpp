@@ -19,6 +19,7 @@ struct CodegenFunc {
     struct Local {
         std::string name;
         size_t      slot;
+        size_t      size;
     };
 
     void codegen(AstNode const& node) {
@@ -32,7 +33,26 @@ struct CodegenFunc {
         f.name = node.value_string();
         f.type = node.type;
 
+        codegen_args(node);
+
         codegen_body(node.last());
+    }
+
+    void codegen_args(AstNode const& func) {
+        std::span args = func.children;
+        args = args.subspan(0, args.size() - 2);
+
+        for (auto const& arg : args) {
+            if (!arg.is_func_arg()) {
+                er->report_bug(
+                    arg.span,
+                    "expected function argument in argument list, got {}",
+                    arg.kind);
+                continue;
+            }
+
+            add_local(arg.value_string(), arg.type.bytesize());
+        }
     }
 
     void codegen_body(AstNode const& node) {
@@ -53,7 +73,8 @@ struct CodegenFunc {
             case AstNodeKind::VarDecl:
                 codegen_expr(node.second());
                 append_op(node.span, Opcode::Local);
-                add_local(node.value_string());
+                append_idx(node.span, node.type.bytesize());
+                add_local(node.value_string(), node.type.bytesize());
                 break;
             case AstNodeKind::ReturnStmt:
                 codegen_expr(node.first());
@@ -99,8 +120,8 @@ struct CodegenFunc {
         }
     }
 
-    void add_local(std::string const& name) {
-        locals.push_back({.name = name, .slot = locals.size()});
+    void add_local(std::string const& name, size_t size) {
+        locals.push_back({.name = name, .slot = locals.size(), .size = size});
     }
 
     constexpr auto find_local(std::string_view name) -> Local* {
@@ -189,7 +210,11 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, ", {}", slot);
                 } break;
 
-                case Opcode::Local:
+                case Opcode::Local: {
+                    auto sz = func.body.text_at(++i);
+                    fmt::println(stderr, ", {}B", sz);
+                } break;
+
                 case Opcode::Pop:
                 case Opcode::Add:
                 case Opcode::Sub:

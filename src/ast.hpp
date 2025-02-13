@@ -191,6 +191,9 @@ struct AstNode {
     constexpr auto is_source_file() const -> bool {
         return kind == AstNodeKind::SourceFile;
     }
+    constexpr auto is_func_arg() const -> bool {
+        return kind == AstNodeKind::FuncDeclArg;
+    }
 
     constexpr auto set_type(Type const& t) -> Type { return type = t; }
 

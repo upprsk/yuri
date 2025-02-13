@@ -34,6 +34,7 @@ struct CodegenFunc {
     struct Local {
         size_t offset;
         size_t idx;
+        size_t size;
     };
 
     void codegen(ssir::Func const& f) {
@@ -49,15 +50,28 @@ struct CodegenFunc {
 
         size_t count{};
 
+        std::span args = f.type.inner;
+        args = args.subspan(0, args.size() - 1);
+        for (auto const& arg : args) {
+            auto l = Local{.offset = count * arg.bytesize(),
+                           .idx = count,
+                           .size = arg.bytesize()};
+
+            locals.push_back(l);
+            count++;
+        }
+
         for (size_t i = 0; i < b.text.size(); i++) {
             auto c = b.opcode_at(i);
 
             switch (c) {
                 case ssir::Opcode::Local: {
-                    auto l = Local{.offset = count * word_size, .idx = count};
+                    auto sz = f.body.text_at(++i);
+                    auto l =
+                        Local{.offset = count * sz, .idx = count, .size = sz};
 
-                    er->report_note(b.span_for(i), "found local: {}, offset={}",
-                                    count, l.offset);
+                    // er->report_note(b.span_for(i), "found local: {},
+                    // offset={}", count, l.offset);
                     locals.push_back(l);
 
                     count++;
@@ -86,11 +100,12 @@ struct CodegenFunc {
 
             switch (c) {
                 case ssir::Opcode::Local: {
+                    auto sz = f.body.text_at(++i);
+
                     auto dst = push_local();
                     auto src = pop_tmp();
 
-                    fmt::println("    move {}, {} # decl", regs[dst],
-                                 regs[src]);
+                    fmt::println("    move {}, {}", regs[dst], regs[src]);
                 } break;
 
                 case ssir::Opcode::Li: {
@@ -134,10 +149,17 @@ struct CodegenFunc {
 
         fmt::println("    subu $sp, $sp, {}", ALIGN(locals.size() * word_size));
 
+        auto argc = f.type.inner.size() - 1;
+
         size_t i{};
         for (auto const& local : locals) {
             fmt::println("    sw {}, {}($sp)", regs[reg_loc_base + i],
                          local.offset);
+
+            if (i < argc) {
+                fmt::println("    move {}, {}", regs[reg_loc_base + i],
+                             regs[reg_args_base + i]);
+            }
 
             i++;
         }

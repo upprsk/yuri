@@ -1,7 +1,3 @@
-// func inc(i: int) int {
-//     return i + 1;
-// }
-// 
 // func main() int {
 //     var total = 1 + 2 - 3;
 //     var i = total;
@@ -12,9 +8,14 @@
 //     // return i;
 // }
 
+func inc(i: int) int {
+    return i + 1;
+}
+
 func main() int {
     var a = 12;
-    var b = 32;
+    // var b = inc(31);
+    var b = 31 + 1;
 
     return a + b - 2;
 }
