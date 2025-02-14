@@ -131,7 +131,6 @@ struct CodegenFunc {
 
             case AstNodeKind::ExprStmt:
                 codegen_expr(node.first());
-                append_op(node.span, Opcode::Ret);
                 append_op(node.span, Opcode::Pop);
                 break;
 
