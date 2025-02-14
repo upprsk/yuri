@@ -88,7 +88,8 @@ struct CodegenFunc {
                     locals.push_back(l);
                 } break;
                 case ssir::Opcode::Li:
-                case ssir::Opcode::Get: i++; break;
+                case ssir::Opcode::Get:
+                case ssir::Opcode::Set: i++; break;
                 case ssir::Opcode::Call:
                     i += 2;
                     is_not_leaf = true;
@@ -150,6 +151,13 @@ struct CodegenFunc {
                     auto dst = push_tmp();
 
                     add_op("move", regs[dst], regs[reg_loc_base + slot]);
+                } break;
+
+                case ssir::Opcode::Set: {
+                    auto slot = f.body.text_at(++i);
+                    auto src = pop_tmp();
+
+                    add_op("move", regs[reg_loc_base + slot], regs[src]);
                 } break;
 
                 case ssir::Opcode::Add: binop("addu"); break;

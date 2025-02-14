@@ -19,6 +19,7 @@ enum class Opcode : uint8_t {
     Li,
     Pop,
     Get,
+    Set,
     Add,
     Sub,
     Slt,

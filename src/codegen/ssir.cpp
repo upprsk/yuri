@@ -76,10 +76,35 @@ struct CodegenFunc {
                 append_idx(node.span, node.type.bytesize());
                 add_local(node.value_string(), node.type.bytesize());
                 break;
+
+            case AstNodeKind::Assign: {
+                auto const& lhs = node.first();
+                if (!lhs.is_id()) {
+                    er->report_error(
+                        lhs.span,
+                        "can't use {} as left hand side in assignment",
+                        lhs.kind);
+                    return;
+                }
+
+                auto local = find_local(lhs.value_string());
+                if (!local) {
+                    er->report_bug(lhs.span, "undefined identifier: '{}'",
+                                   lhs.value_string());
+                    return;
+                }
+
+                codegen_expr(node.second());
+
+                append_op(lhs.span, Opcode::Set);
+                append_idx(node.span, local->slot);
+            } break;
+
             case AstNodeKind::ReturnStmt:
                 codegen_expr(node.first());
                 append_op(node.span, Opcode::Ret);
                 break;
+
             default:
                 er->report_bug(node.span, "invalid node for statement: {}",
                                node.kind);
@@ -252,6 +277,11 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, ", {}", slot);
                 } break;
 
+                case Opcode::Set: {
+                    auto slot = func.body.text_at(++i);
+                    fmt::println(stderr, ", {}", slot);
+                } break;
+
                 case Opcode::Local: {
                     auto sz = func.body.text_at(++i);
                     fmt::println(stderr, ", {}B", sz);
@@ -291,6 +321,7 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::Li: name = "Li"; break;
         case yuri::ssir::Opcode::Pop: name = "Pop"; break;
         case yuri::ssir::Opcode::Get: name = "Get"; break;
+        case yuri::ssir::Opcode::Set: name = "Set"; break;
         case yuri::ssir::Opcode::Add: name = "Add"; break;
         case yuri::ssir::Opcode::Sub: name = "Sub"; break;
         case yuri::ssir::Opcode::Slt: name = "Slt"; break;
