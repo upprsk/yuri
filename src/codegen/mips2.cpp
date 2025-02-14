@@ -400,7 +400,8 @@ void codegen_stdout(ssir::Module const& m, ErrorReporter& er) {
     fmt::println(".global _start");
     fmt::println("_start:");
     fmt::println("    jal main");
-    fmt::println("    li $v0, 10");
+    fmt::println("    move $a0, $v0");
+    fmt::println("    li $v0, 17");
     fmt::println("    syscall");
 
     c.codegen(m);
