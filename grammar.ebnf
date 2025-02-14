@@ -4,10 +4,13 @@ source_file ::= { top_decl } ;
 
 top_decl ::= func_decl ;
 
-func_decl ::= "func" ID "(" [ func_decl_args ] ")" [ expr ] block ;
-var_decl  ::= "var" ID [ ":" expr ] "=" expr ";" ;
+func_decl     ::= "func" ID "(" [ func_decl_args ] ")" [ expr ] block ;
+asm_func_decl ::= "asm" "func" ID "(" [ func_decl_args ] ")" [ expr ] asm_block ;
+var_decl      ::= "var" ID [ ":" expr ] "=" expr ";" ;
 
 func_decl_args ::= ID ":" expr [ "," [ func_decl_args ] ] ;
+
+asm_block ::= "{" { STR } "}" ;
 
 (* stmts *)
 
@@ -30,7 +33,7 @@ assign      ::= expr ("=" | "+=" | "-=" | "*=" | "/=") expr ";" ;
 
 expr ::= comparison ;
 
-comparison     ::= additive { ("<", "<=", ">", ">=", "==") additive } ;
+comparison     ::= additive { ("<" | "<=" | ">" | ">=" | "==" | "!=") additive } ;
 additive       ::= multiplicative { ("+" | "-") multiplicative } ;
 multiplicative ::= call { ("*" | "/") call } ;
 call           ::= primary [ "(" call_args ")" ] ;
@@ -39,6 +42,7 @@ call_args ::= expr [ "," call_args ] ;
 
 primary ::= ID
           | INT
+          | STR
           | "(" expr ")"
           ;
 
@@ -46,3 +50,4 @@ primary ::= ID
 
 ID  ::= [a-zA-Z_][a-zA-Z_0-9]+ ;
 INT ::= [0-9][0-9_]+ ;
+STR ::= ... ;
