@@ -60,8 +60,12 @@ auto main(int argc, char** argv) -> int {
         ast.add_types(env, er);
         // fmt::println("{}", ast);
 
+        if (er.had_error()) return 1;
+
         auto m = yuri::ssir::codegen(ast, er);
         yuri::ssir::dump_module(m);
+
+        if (er.had_error()) return 1;
 
         yuri::mips::v2::codegen_stdout(m, er);
 
