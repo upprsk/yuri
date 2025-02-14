@@ -129,6 +129,12 @@ struct CodegenFunc {
                 update_label_offest(end);
             } break;
 
+            case AstNodeKind::ExprStmt:
+                codegen_expr(node.first());
+                append_op(node.span, Opcode::Ret);
+                append_op(node.span, Opcode::Pop);
+                break;
+
             case AstNodeKind::ReturnStmt:
                 codegen_expr(node.first());
                 append_op(node.span, Opcode::Ret);

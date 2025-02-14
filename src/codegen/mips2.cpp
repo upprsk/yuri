@@ -212,6 +212,10 @@ struct CodegenFunc {
                     add_op("b", fmt::format("{}.ret", f.name));
                 } break;
 
+                case ssir::Opcode::Pop: {
+                    pop_tmp();
+                } break;
+
                 default:
                     er->report_bug(b.span_for(i),
                                    "invalid opcode found in codegen: {}",

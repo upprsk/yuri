@@ -5,5 +5,5 @@ asm func printi(v: int) {
 }
 
 func main() int {
-    var _ = printi(12);
+    printi(42);
 }
