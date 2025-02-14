@@ -179,7 +179,7 @@ struct CodegenFunc {
         fmt::println("    addu $sp, $sp, {}", ALIGN(locals.size() * word_size));
 
         fmt::println("    jr $ra");
-        fmt::println("    # end of {}", f.name);
+        fmt::println("# end of {}", f.name);
     }
 
     constexpr auto push_tmp() -> size_t { return stack_top++; }
