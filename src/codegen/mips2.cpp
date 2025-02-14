@@ -328,7 +328,7 @@ struct CodegenFunc {
                           curr.op == "bgt" || curr.op == "bge") &&
                          prev.r.at(1) == 't' && prev.r == curr.r) {
                     had_change = true;
-                    output.at(i) = Op::init(curr.op, prev.r, curr.a, curr.b);
+                    output.at(i) = Op::init(curr.op, prev.a, curr.a, curr.b);
                     output.erase(output.begin() + i-- - 1);
                 }
 
