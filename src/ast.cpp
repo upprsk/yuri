@@ -64,6 +64,54 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             return set_type(ty);
         }
+        case AstNodeKind::AsmFunc: {
+            auto        e = env.child();
+            auto const& name = std::get<std::string>(value);
+
+            auto args = [&] {
+                std::span nodes = children;
+                return nodes.subspan(0, children.size() - 2);
+            }();
+
+            for (auto& arg : args) {
+                arg.add_types(e, er);
+            }
+
+            auto ret_anon = children.at(children.size() - 2).add_types(e, er);
+            if (!children.at(children.size() - 2).is_nil() &&
+                !ret_anon.is_type()) {
+                er.report_error(children.at(children.size() - 2).span,
+                                "expected type for return type, got {}",
+                                ret_anon);
+            }
+
+            auto ret_span = children.at(children.size() - 2).is_nil()
+                                ? span
+                                : children.at(children.size() - 2).span;
+            auto ret =
+                children.at(children.size() - 2).is_nil()
+                    ? Type::Void()
+                    : children.at(children.size() - 2).eval_to_type(e, er);
+
+            // function body
+            for (auto const& s : children.at(children.size() - 1).children) {
+                if (s.kind != AstNodeKind::Str) {
+                    er.report_bug(
+                        s.span, "got non-str node in asm function body: {}", s);
+                    continue;
+                }
+            }
+
+            std::vector<Type> arg_types;
+            for (auto const& arg : args) {
+                arg_types.push_back(arg.type);
+            }
+
+            auto ty = Type::Func(arg_types, ret);
+            env.define(name, ty);
+
+            return set_type(ty);
+        } break;
         case AstNodeKind::FuncDeclArg: {
             auto const& name = std::get<std::string>(value);
 
@@ -318,6 +366,7 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::Nil: name = "Nil"; break;
         case T::SourceFile: name = "SourceFile"; break;
         case T::Func: name = "Func"; break;
+        case T::AsmFunc: name = "AsmFunc"; break;
         case T::FuncDeclArg: name = "FuncDeclArg"; break;
         case T::VarDecl: name = "VarDecl"; break;
         case T::Block: name = "Block"; break;
@@ -339,6 +388,7 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::Call: name = "Call"; break;
         case T::Id: name = "Id"; break;
         case T::Int: name = "Int"; break;
+        case T::Str: name = "Str"; break;
         case T::Err: name = "Err"; break;
     }
 

@@ -498,6 +498,16 @@ struct CodegenFunc {
 
 struct Codegen {
     void codegen(ssir::Module const& m) {
+        for (auto const& [name, f] : m.asm_entries) {
+            fmt::println("");
+            fmt::println("# {}", f.type);
+            fmt::println("{}:", f.name);
+
+            for (auto const& line : f.body) {
+                fmt::println("    {}", line);
+            }
+        }
+
         for (auto const& [name, f] : m.entries) {
             codegen_func(f);
         }

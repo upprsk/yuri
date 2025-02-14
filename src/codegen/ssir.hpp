@@ -117,8 +117,15 @@ struct Func {
     Block       body;
 };
 
+struct AsmFunc {
+    std::string              name;
+    Type                     type;
+    std::vector<std::string> body;
+};
+
 struct Module {
-    std::unordered_map<std::string, Func> entries;
+    std::unordered_map<std::string, Func>    entries;
+    std::unordered_map<std::string, AsmFunc> asm_entries;
 };
 
 auto codegen(AstNode const& ast, ErrorReporter& er) -> Module;

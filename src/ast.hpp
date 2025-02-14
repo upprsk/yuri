@@ -16,6 +16,7 @@ enum class AstNodeKind {
     Nil,
     SourceFile,
     Func,
+    AsmFunc,
     FuncDeclArg,
     VarDecl,
     Block,
@@ -37,6 +38,7 @@ enum class AstNodeKind {
     Call,
     Id,
     Int,
+    Str,
     Err,
 };
 
@@ -70,6 +72,21 @@ struct AstNode {
             .children = std::move(children),
             .span = span,
             .kind = AstNodeKind::Func,
+        };
+    }
+
+    static auto AsmFunc(Span span, std::string const& name,
+                        std::vector<AstNode> const& args, AstNode const& ret,
+                        AstNode const& body) -> AstNode {
+        auto children = args;
+        children.push_back(ret);
+        children.push_back(body);
+
+        return {
+            .value = name,
+            .children = std::move(children),
+            .span = span,
+            .kind = AstNodeKind::AsmFunc,
         };
     }
 
@@ -159,6 +176,22 @@ struct AstNode {
         };
     }
 
+    static auto Str(Span span, std::string const& value) -> AstNode {
+        if (value.at(0) != '"')
+            return AstNode::Err(span, "invalid string start character");
+        if (value.at(value.size() - 1) != '"')
+            return AstNode::Err(span, "invalid string end character");
+
+        auto v = escape_string(value.substr(1, value.size() - 2));
+
+        return {
+            .value = v,
+            .children = {},
+            .span = span,
+            .kind = AstNodeKind::Str,
+        };
+    }
+
     static auto Err(Span span, std::string const& message) -> AstNode {
         return {
             .value = message,
@@ -201,6 +234,29 @@ struct AstNode {
 
     auto add_types(Env& env, ErrorReporter& er) -> Type;
     auto eval_to_type(Env& env, ErrorReporter& er) -> Type;
+
+    static constexpr auto escape_string(std::string_view s) -> std::string {
+        std::string out;
+        while (!s.empty()) {
+            if (s.at(0) == '\\') {
+                s = s.substr(1);
+                switch (s.at(0)) {
+                    case 'n': out.push_back('\n'); break;
+                    case 't': out.push_back('\t'); break;
+                    case 'v': out.push_back('\v'); break;
+                    case 'r': out.push_back('\r'); break;
+                    default: out.push_back(s.at(0)); break;
+                }
+
+                s = s.substr(1);
+            } else {
+                out.push_back(s.at(0));
+                s = s.substr(1);
+            }
+        }
+
+        return out;
+    }
 };
 
 }  // namespace yuri

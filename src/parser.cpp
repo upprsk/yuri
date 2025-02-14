@@ -90,7 +90,19 @@ struct Parser {
 
     // decls ------------------------------------------------------------------
 
-    auto parse_top_decl() -> AstNode { return parse_func_decl(); }
+    auto parse_top_decl() -> AstNode {
+        auto t = peek();
+        if (t.is_kw(source, "func")) return parse_func_decl();
+        if (t.is_kw(source, "asm")) return parse_asm_func_decl();
+
+        er->report_error(
+            t.span,
+            "expected top level declaration (global or function), but found {}",
+            t.type);
+
+        advance();
+        return AstNode::Err(t.span, "expected top-level declaration");
+    }
 
     auto parse_func_decl() -> AstNode {
         auto start = span();
@@ -118,6 +130,36 @@ struct Parser {
         return AstNode::Func(start.extend(body.span),
                              std::string{name.span.str(source)}, args, ret,
                              body);
+    }
+
+    auto parse_asm_func_decl() -> AstNode {
+        auto start = span();
+        if (!consume_id("asm")) return AstNode::Err(start, "expected 'asm'");
+        if (!consume_id("func"))
+            return AstNode::Err(prev_span(), "expected 'func'");
+
+        auto name = peek();
+        try_consume(TokenType::Id, name.span, "expected function name");
+
+        std::vector<AstNode> args;
+
+        try_consume(TokenType::Lparen, prev_span(), "expected '('");
+        if (peek().type != TokenType::Rparen) {
+            args = parse_func_decl_args();
+        }
+
+        try_consume(TokenType::Rparen, prev_span(), "expected ')'");
+
+        auto ret = AstNode::Nil();
+        if (peek().type != TokenType::Lbrace) {
+            ret = parse_expr();
+        }
+
+        auto body = parse_asm_block();
+
+        return AstNode::AsmFunc(start.extend(body.span),
+                                std::string{name.span.str(source)}, args, ret,
+                                body);
     }
 
     auto parse_func_decl_args() -> std::vector<AstNode> {
@@ -183,6 +225,26 @@ struct Parser {
 
         while (!is_at_end() && peek().type != TokenType::Rbrace) {
             children.push_back(parse_stmt());
+        }
+
+        auto end = span();
+        try_consume(TokenType::Rbrace, end, "expected '}'");
+
+        return AstNode::Block(start.extend(end), children);
+    }
+
+    auto parse_asm_block() -> AstNode {
+        auto start = span();
+        try_consume(TokenType::Lbrace, start, "expected '{'");
+
+        std::vector<AstNode> children;
+
+        while (!is_at_end() && peek().type != TokenType::Rbrace) {
+            auto s = peek();
+            try_consume(TokenType::Str, prev_span(), "expected string");
+
+            children.push_back(
+                AstNode::Str(s.span, std::string{s.span.str(source)}));
         }
 
         auto end = span();

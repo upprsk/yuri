@@ -1,8 +1,9 @@
-func main() int {
-    var i = 2;
-    while i > 0 {
-        i = i - 1;
-    }
+asm func printi(v: int) {
+    "li $v0, 1"
+    "syscall"
+    "jr $ra"
+}
 
-    return i;
+func main() int {
+    var _ = printi(12);
 }

@@ -186,9 +186,10 @@ struct CodegenFunc {
                 }
 
                 // find the function
-                auto const& f = m->entries.find(callee.value_string());
-                if (f == m->entries.end()) {
-                    er->report_error(callee.span, "undefined function: {}",
+                auto f = find_function_name(callee.value_string());
+                if (!f) {
+                    er->report_error(callee.span,
+                                     "undefined function (ssir): {}",
                                      callee.value_string(), callee);
                     return;
                 }
@@ -198,7 +199,7 @@ struct CodegenFunc {
                 }
 
                 append_op(node.span, Opcode::Call);
-                append_id(node.span, f->first);
+                append_id(node.span, *f);
                 append_idx(node.span, args.size());
             } break;
 
@@ -207,6 +208,20 @@ struct CodegenFunc {
                                node.kind);
                 break;
         }
+    }
+
+    [[nodiscard]] auto find_function_name(std::string const& name) const
+        -> std::optional<std::string> {
+        if (auto const& f = m->entries.find(name); f != m->entries.end()) {
+            return f->first;
+        }
+
+        if (auto const& f = m->asm_entries.find(name);
+            f != m->asm_entries.end()) {
+            return f->first;
+        }
+
+        return std::nullopt;
     }
 
     void add_local(std::string const& name, size_t size) {
@@ -275,10 +290,27 @@ struct Codegen {
         }
 
         for (auto const& decl : node.children) {
-            auto c = CodegenFunc{.er = er, .m = &m};
-            c.codegen(decl);
+            if (decl.kind == AstNodeKind::Func) {
+                auto c = CodegenFunc{.er = er, .m = &m};
+                c.codegen(decl);
 
-            m.entries[c.f.name] = std::move(c.f);
+                m.entries[c.f.name] = std::move(c.f);
+            } else if (decl.kind == AstNodeKind::AsmFunc) {
+                std::vector<std::string> body;
+                for (auto const& line :
+                     decl.children.at(decl.children.size() - 1).children) {
+                    body.push_back(line.value_string());
+                }
+
+                m.asm_entries[decl.value_string()] = {
+                    .name = decl.value_string(),
+                    .type = decl.type,
+                    .body = body,
+                };
+            } else {
+                er->report_bug(decl.span, "unexpected node in top-level: {}",
+                               decl);
+            }
         }
     }
 
