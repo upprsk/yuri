@@ -383,6 +383,28 @@ struct CodegenFunc {
                     output.erase(output.begin() + i-- - 1);
                 }
 
+                //    seq tA, B, C
+                //    beq tA, $zero, _
+                // -> bne B, C, _
+                else if (prev.op == "seq" && curr.op == "beq" &&
+                         prev.r.at(1) == 't' && prev.r == curr.r &&
+                         curr.a == "$zero") {
+                    had_change = true;
+                    output.at(i) = Op::init("bne", prev.a, prev.b, curr.b);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
+                //    sne tA, B, C
+                //    beq tA, $zero, _
+                // -> beq B, C, _
+                else if (prev.op == "sne" && curr.op == "beq" &&
+                         prev.r.at(1) == 't' && prev.r == curr.r &&
+                         curr.a == "$zero") {
+                    had_change = true;
+                    output.at(i) = Op::init("beq", prev.a, prev.b, curr.b);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
                 //    b A
                 //    A:
                 // -> A:
