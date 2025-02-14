@@ -301,7 +301,7 @@ void dump_module(Module const& m) {
         size_t i{};
         for (; i < func.body.text.size(); i++) {
             if (lbl < func.body.labels.size() && func.body.label_at(lbl) == i) {
-                fmt::println("{}:", lbl);
+                fmt::println(stderr, "{}:", lbl);
                 lbl++;
             }
 
