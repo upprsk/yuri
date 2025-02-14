@@ -283,12 +283,19 @@ struct CodegenFunc {
                 auto const& prev = output.at(i - 1);
                 auto const& curr = output.at(i);
 
+                //    li tA, 0
+                // -> move tA, $zero
+                if (prev.op == "li" && prev.r.at(1) == 't' && prev.a == "0") {
+                    had_change = true;
+                    output.at(--i) = Op::init("move", prev.r, "$zero");
+                }
+
                 //    move tA, B
                 //    addu _, _, tA
                 // -> addu _, _, B
-                if (prev.op == "move" &&
-                    (curr.op == "addu" || curr.op == "subu") &&
-                    prev.r.at(1) == 't' && prev.r == curr.b) {
+                else if (prev.op == "move" &&
+                         (curr.op == "addu" || curr.op == "subu") &&
+                         prev.r.at(1) == 't' && prev.r == curr.b) {
                     had_change = true;
                     output.at(i) = Op::init(curr.op, curr.r, curr.a, prev.a);
                     output.erase(output.begin() + i-- - 1);
@@ -298,10 +305,26 @@ struct CodegenFunc {
                 //    addu _, tA, _
                 // -> addu _, B, _
                 else if (prev.op == "move" &&
-                         (curr.op == "addu" || curr.op == "subu") &&
+                         (curr.op == "addu" || curr.op == "subu" ||
+                          curr.op == "beq" || curr.op == "bne" ||
+                          curr.op == "blt" || curr.op == "ble" ||
+                          curr.op == "bgt" || curr.op == "bge") &&
                          prev.r.at(1) == 't' && prev.r == curr.a) {
                     had_change = true;
                     output.at(i) = Op::init(curr.op, curr.r, prev.a, curr.b);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
+                //    move tA, B
+                //    beq tA, _, _
+                // -> beq B, _, _
+                else if (prev.op == "move" &&
+                         (curr.op == "beq" || curr.op == "bne" ||
+                          curr.op == "blt" || curr.op == "ble" ||
+                          curr.op == "bgt" || curr.op == "bge") &&
+                         prev.r.at(1) == 't' && prev.r == curr.r) {
+                    had_change = true;
+                    output.at(i) = Op::init(curr.op, prev.r, curr.a, curr.b);
                     output.erase(output.begin() + i-- - 1);
                 }
 
