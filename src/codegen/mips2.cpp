@@ -336,6 +336,28 @@ struct CodegenFunc {
                     output.erase(output.begin() + i-- - 1);
                 }
 
+                //    slt tA, B, C
+                //    beq tA, $zero, _
+                // -> bgte B, C, _
+                else if (prev.op == "slt" && curr.op == "beq" &&
+                         prev.r.at(1) == 't' && prev.r == curr.r &&
+                         curr.a == "$zero") {
+                    had_change = true;
+                    output.at(i) = Op::init("bge", prev.a, prev.b, curr.b);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
+                //    sgt tA, B, C
+                //    beq tA, $zero, _
+                // -> ble B, C, _
+                else if (prev.op == "sgt" && curr.op == "beq" &&
+                         prev.r.at(1) == 't' && prev.r == curr.r &&
+                         curr.a == "$zero") {
+                    had_change = true;
+                    output.at(i) = Op::init("ble", prev.a, prev.b, curr.b);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
                 //    b A
                 //    A:
                 // -> A:
@@ -359,7 +381,9 @@ struct CodegenFunc {
             if (op.op == "lw" || op.op == "sw") {
                 fmt::println("    {} {}, {}({})", op.op, op.r, op.a, op.b);
             } else if (op.op == "addu" || op.op == "subu" || op.op == "slt" ||
-                       op.op == "sgt" || op.op == "beq") {
+                       op.op == "sgt" || op.op == "beq" || op.op == "bne" ||
+                       op.op == "blt" || op.op == "ble" || op.op == "bgt" ||
+                       op.op == "bge") {
                 fmt::println("    {} {}, {}, {}", op.op, op.r, op.a, op.b);
             } else if (op.op == "move" || op.op == "li") {
                 fmt::println("    {} {}, {}", op.op, op.r, op.a);
