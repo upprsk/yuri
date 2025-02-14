@@ -346,6 +346,8 @@ void dump_module(Module const& m) {
                 case Opcode::Pop:
                 case Opcode::Add:
                 case Opcode::Sub:
+                case Opcode::Seq:
+                case Opcode::Sne:
                 case Opcode::Slt:
                 case Opcode::Sgt:
                 case Opcode::Ret: fmt::println(stderr, ""); break;
