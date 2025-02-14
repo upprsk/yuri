@@ -257,6 +257,13 @@ struct Codegen {
 
 void codegen_stdout(ssir::Module const& m, ErrorReporter& er) {
     auto c = Codegen{.er = &er};
+
+    fmt::println(".text");
+    fmt::println("_start:");
+    fmt::println("    jal main");
+    fmt::println("    li $v0, 10");
+    fmt::println("    syscall");
+
     c.codegen(m);
 }
 
