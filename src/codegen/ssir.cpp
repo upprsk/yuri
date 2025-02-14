@@ -399,7 +399,7 @@ void dump_module(Module const& m) {
         }
 
         if (lbl < func.body.labels.size() && func.body.label_at(lbl) == i) {
-            fmt::println("{}:", lbl);
+            fmt::println(stderr, "{}:", lbl);
             lbl++;
         }
     }
