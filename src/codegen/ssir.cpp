@@ -114,6 +114,37 @@ struct CodegenFunc {
             case AstNodeKind::Add: binop(Opcode::Add); break;
             case AstNodeKind::Sub: binop(Opcode::Sub); break;
             case AstNodeKind::LessThan: binop(Opcode::Slt); break;
+
+            case AstNodeKind::Call: {
+                std::span args = node.children;
+                args = args.subspan(1, args.size() - 1);
+
+                auto const& callee = node.first();
+                if (!callee.is_id()) {
+                    er->report_error(callee.span,
+                                     "can't call {}, indirect calls have not "
+                                     "been implemented",
+                                     callee);
+                    return;
+                }
+
+                // find the function
+                auto const& f = m->entries.find(callee.value_string());
+                if (f == m->entries.end()) {
+                    er->report_error(callee.span, "undefined function: {}",
+                                     callee.value_string(), callee);
+                    return;
+                }
+
+                for (auto const& arg : args) {
+                    codegen_expr(arg);
+                }
+
+                append_op(node.span, Opcode::Call);
+                append_id(node.span, f->first);
+                append_idx(node.span, args.size());
+            } break;
+
             default:
                 er->report_bug(node.span, "invalid node for expression: {}",
                                node.kind);
@@ -137,6 +168,15 @@ struct CodegenFunc {
         f.body.append_span(s);
     }
 
+    void append_id(Span s, std::string const& id) {
+        auto idx = f.body.append_id(id);
+        if (idx > std::numeric_limits<uint8_t>::max()) {
+            er->report_bug({}, "maximum number of local identifiers reached");
+        }
+
+        append_idx(s, idx);
+    }
+
     void append_const(Span s, uint64_t v) {
         auto idx = f.body.append_const(v);
         if (idx > std::numeric_limits<uint8_t>::max()) {
@@ -156,6 +196,7 @@ struct CodegenFunc {
     }
 
     ErrorReporter*     er;
+    Module*            m;
     Func               f{};
     std::vector<Local> locals{};
 };
@@ -171,7 +212,7 @@ struct Codegen {
         }
 
         for (auto const& decl : node.children) {
-            auto c = CodegenFunc{.er = er};
+            auto c = CodegenFunc{.er = er, .m = &m};
             c.codegen(decl);
 
             m.entries[c.f.name] = std::move(c.f);
@@ -216,6 +257,12 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, ", {}B", sz);
                 } break;
 
+                case Opcode::Call: {
+                    auto id = func.body.text_at(++i);
+                    auto argc = func.body.text_at(++i);
+                    fmt::println(stderr, ", {}, {}", func.body.id_at(id), argc);
+                } break;
+
                 case Opcode::Pop:
                 case Opcode::Add:
                 case Opcode::Sub:
@@ -247,6 +294,7 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::Add: name = "Add"; break;
         case yuri::ssir::Opcode::Sub: name = "Sub"; break;
         case yuri::ssir::Opcode::Slt: name = "Slt"; break;
+        case yuri::ssir::Opcode::Call: name = "Call"; break;
         case yuri::ssir::Opcode::Ret: name = "Ret"; break;
     }
 

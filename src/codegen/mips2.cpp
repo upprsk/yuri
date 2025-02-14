@@ -9,11 +9,13 @@
 #include "fmt/format.h"
 
 // round to 8bytes
-#define ALIGN(addr) ((addr) + (8 - 1)) & -8
+#define ALIGN_8(addr) ((addr) + (8 - 1)) & -8
+#define ALIGN_4(addr) ((addr) + (4 - 1)) & -4
 
 namespace yuri::mips::v2 {
 
 static constexpr size_t reg_args_base = 4;
+static constexpr size_t reg_args_count = 4;
 static constexpr size_t reg_tmp_base = 8;
 static constexpr size_t reg_loc_base = 16;
 
@@ -53,9 +55,7 @@ struct CodegenFunc {
         std::span args = f.type.inner;
         args = args.subspan(0, args.size() - 1);
         for (auto const& arg : args) {
-            auto l = Local{.offset = count * arg.bytesize(),
-                           .idx = count,
-                           .size = arg.bytesize()};
+            auto l = Local{.offset = 0, .idx = count, .size = arg.bytesize()};
 
             locals.push_back(l);
             count++;
@@ -67,8 +67,7 @@ struct CodegenFunc {
             switch (c) {
                 case ssir::Opcode::Local: {
                     auto sz = f.body.text_at(++i);
-                    auto l =
-                        Local{.offset = count * sz, .idx = count, .size = sz};
+                    auto l = Local{.offset = 0, .idx = count, .size = sz};
 
                     // er->report_note(b.span_for(i), "found local: {},
                     // offset={}", count, l.offset);
@@ -78,9 +77,25 @@ struct CodegenFunc {
                 } break;
                 case ssir::Opcode::Li:
                 case ssir::Opcode::Get: i++; break;
+                case ssir::Opcode::Call: is_not_leaf = true; break;
                 default: break;
             }
         }
+
+        stack_size = 0;
+
+        // need to save $ra
+        if (is_not_leaf) {
+            stack_size += word_size;
+        }
+
+        for (size_t i = 0; i < locals.size(); i++) {
+            locals.at(i).offset = stack_size;
+            // FIXME: use proper alignment
+            stack_size += ALIGN_4(locals.at(i).size);
+        }
+
+        stack_size = ALIGN_8(stack_size);
     }
 
     void codegen_body(ssir::Func const& f) {
@@ -91,8 +106,8 @@ struct CodegenFunc {
             auto lhs = pop_tmp();
             auto dst = push_tmp();
 
-            fmt ::println("    {} {}, {}, {}", op, regs[dst], regs[lhs],
-                          regs[rhs]);
+            fmt::println("    {} {}, {}, {}", op, regs[dst], regs[lhs],
+                         regs[rhs]);
         };
 
         for (size_t i = 0; i < b.text.size(); i++) {
@@ -120,13 +135,28 @@ struct CodegenFunc {
                     auto slot = f.body.text_at(++i);
                     auto dst = push_tmp();
 
-                    fmt ::println("    move {}, {}", regs[dst],
-                                  regs[reg_loc_base + slot]);
+                    fmt::println("    move {}, {}", regs[dst],
+                                 regs[reg_loc_base + slot]);
                 } break;
 
                 case ssir::Opcode::Add: binop("addu"); break;
                 case ssir::Opcode::Sub: binop("subu"); break;
                 case ssir::Opcode::Slt: binop("slt"); break;
+
+                case ssir::Opcode::Call: {
+                    auto id = f.body.text_at(++i);
+                    auto argc = f.body.text_at(++i);
+                    for (size_t i = argc; i > 0; i--) {
+                        auto r = pop_tmp();
+                        fmt::println("    move {}, {}",
+                                     regs[reg_args_base + i - 1], regs[r]);
+                    }
+
+                    fmt::println("    jal {}", f.body.id_at(id));
+
+                    auto r = push_tmp();
+                    fmt::println("    move {}, {}", regs[r], regs[reg_v0]);
+                } break;
 
                 case ssir::Opcode::Ret: {
                     auto v = pop_tmp();
@@ -148,9 +178,14 @@ struct CodegenFunc {
         fmt::println("# {}", f.type);
         fmt::println("{}:", f.name);
 
-        fmt::println("    subu $sp, $sp, {}", ALIGN(locals.size() * word_size));
+        fmt::println("    subu $sp, $sp, {}", stack_size);
 
         auto argc = f.type.inner.size() - 1;
+
+        if (is_not_leaf) {
+            // $ra is in offset 0
+            fmt::println("    sw {}, {}($sp)", regs[reg_ra], 0);
+        }
 
         size_t i{};
         for (auto const& local : locals) {
@@ -169,6 +204,11 @@ struct CodegenFunc {
     void codegen_postamble(ssir::Func const& f) {
         fmt::println("    .ret:");
 
+        if (is_not_leaf) {
+            // $ra is in offset 0
+            fmt::println("    lw {}, {}($sp)", regs[reg_ra], 0);
+        }
+
         size_t i{};
         for (auto const& local : locals) {
             fmt::println("    lw {}, {}($sp)", regs[reg_loc_base + i],
@@ -177,7 +217,7 @@ struct CodegenFunc {
             i++;
         }
 
-        fmt::println("    addu $sp, $sp, {}", ALIGN(locals.size() * word_size));
+        fmt::println("    addu $sp, $sp, {}", stack_size);
 
         fmt::println("    jr $ra");
         fmt::println("# end of {}", f.name);
@@ -195,6 +235,9 @@ struct CodegenFunc {
 
     size_t stack_top{reg_tmp_base};
     size_t locals_top{reg_loc_base};
+    size_t stack_size{};
+
+    bool is_not_leaf{};
 };
 
 struct Codegen {

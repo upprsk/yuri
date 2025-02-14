@@ -184,6 +184,7 @@ struct AstNode {
     constexpr auto is_lvalue() const -> bool { return kind == AstNodeKind::Id; }
 
     constexpr auto is_nil() const -> bool { return kind == AstNodeKind::Nil; }
+    constexpr auto is_id() const -> bool { return kind == AstNodeKind::Id; }
     constexpr auto is_func() const -> bool { return kind == AstNodeKind::Func; }
     constexpr auto is_block() const -> bool {
         return kind == AstNodeKind::Block;

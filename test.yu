@@ -1,25 +1,7 @@
-// func main() int {
-//     var total = 1 + 2 - 3;
-//     var i = total;
-//     while i < 10 {
-//         i = inc(i);
-//     }
-// 
-//     // return i;
-// }
-
-func inc(i: int) int {
-    return i + 1;
+func add(x: int, y: int) int {
+    return x + y;
 }
 
-func test(i: int) bool {
-    return i < 10;
-}
-
-func main() int {
-    var a = 12;
-    // var b = inc(31);
-    var b = 31 + 1;
-
-    return a + b - 2;
+func main() {
+    var a = add(1, 2);
 }
