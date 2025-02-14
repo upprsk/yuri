@@ -169,6 +169,8 @@ struct CodegenFunc {
             case AstNodeKind::Sub: binop(Opcode::Sub); break;
             case AstNodeKind::LessThan: binop(Opcode::Slt); break;
             case AstNodeKind::GreaterThan: binop(Opcode::Sgt); break;
+            case AstNodeKind::Equal: binop(Opcode::Seq); break;
+            case AstNodeKind::NotEqual: binop(Opcode::Sne); break;
 
             case AstNodeKind::Call: {
                 std::span args = node.children;
@@ -378,6 +380,8 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::Set: name = "Set"; break;
         case yuri::ssir::Opcode::Add: name = "Add"; break;
         case yuri::ssir::Opcode::Sub: name = "Sub"; break;
+        case yuri::ssir::Opcode::Seq: name = "Seq"; break;
+        case yuri::ssir::Opcode::Sne: name = "Sne"; break;
         case yuri::ssir::Opcode::Slt: name = "Slt"; break;
         case yuri::ssir::Opcode::Sgt: name = "Sgt"; break;
         case yuri::ssir::Opcode::B: name = "B"; break;

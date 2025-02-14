@@ -22,6 +22,8 @@ enum class Opcode : uint8_t {
     Set,
     Add,
     Sub,
+    Seq,
+    Sne,
     Slt,
     Sgt,
     B,
