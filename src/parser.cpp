@@ -94,6 +94,7 @@ struct Parser {
         auto t = peek();
         if (t.is_kw(source, "func")) return parse_func_decl();
         if (t.is_kw(source, "asm")) return parse_asm_func_decl();
+        if (t.is_kw(source, "var")) return parse_var_decl();
 
         er->report_error(
             t.span,
