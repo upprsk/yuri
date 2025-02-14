@@ -294,6 +294,24 @@ struct CodegenFunc {
                     output.at(--i) = Op::init("move", prev.r, "$zero");
                 }
 
+                //    li tA, B
+                //    addu _, _, tA
+                else if (prev.op == "li" && curr.op == "addu" &&
+                         prev.r.at(1) == 't' && prev.r == curr.b) {
+                    had_change = true;
+                    output.at(i) = Op::init("addiu", curr.r, curr.a, prev.a);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
+                //    li tA, B
+                //    subu _, _, tA
+                else if (prev.op == "li" && curr.op == "subu" &&
+                         prev.r.at(1) == 't' && prev.r == curr.b) {
+                    had_change = true;
+                    output.at(i) = Op::init("subiu", curr.r, curr.a, prev.a);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
                 //    move tA, B
                 //    addu _, _, tA
                 // -> addu _, _, B
@@ -432,7 +450,8 @@ struct CodegenFunc {
             } else if (op.op == "addu" || op.op == "subu" || op.op == "sne" ||
                        op.op == "seq" || op.op == "slt" || op.op == "sgt" ||
                        op.op == "beq" || op.op == "bne" || op.op == "blt" ||
-                       op.op == "ble" || op.op == "bgt" || op.op == "bge") {
+                       op.op == "ble" || op.op == "bgt" || op.op == "bge" ||
+                       op.op == "addiu" || op.op == "subiu") {
                 fmt::println("    {} {}, {}, {}", op.op, op.r, op.a, op.b);
             } else if (op.op == "move" || op.op == "li") {
                 fmt::println("    {} {}, {}", op.op, op.r, op.a);
