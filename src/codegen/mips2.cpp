@@ -272,6 +272,8 @@ struct CodegenFunc {
 
     // ----------------------------------------------------------------------------
 
+    // FIXME: should not optimize when inputs are temporaries, as these may be
+    // optimized by other steps
     void optimize(ssir::Func const& f) {
         fmt::println("# ====== optimizing {}", f.name);
 

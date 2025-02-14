@@ -4,7 +4,7 @@ func add(x: int, y: int) int {
 
 func main() int {
     var i = 0;
-    while i != 5 {
+    while i == 0 {
         i = i + 1;
     }
 
