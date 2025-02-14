@@ -456,6 +456,10 @@ struct Parser {
             return AstNode::Int(t.span, value);
         }
 
+        if (t.type == TokenType::Str) {
+            return AstNode::Str(t.span, std::string{t.span.str(source)});
+        }
+
         er->report_error(t.span,
                          "invalid syntax, expected expression, found {}",
                          t.span.str(source));
