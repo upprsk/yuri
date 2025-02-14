@@ -218,7 +218,8 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
         case AstNodeKind::LessThanEqual:
         case AstNodeKind::GreaterThan:
         case AstNodeKind::GreaterThanEqual:
-        case AstNodeKind::Equal: {
+        case AstNodeKind::Equal:
+        case AstNodeKind::NotEqual: {
             auto lhs = children.at(0).add_types(env, er);
             auto rhs = children.at(1).add_types(env, er);
 
@@ -334,6 +335,7 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::GreaterThan: name = "GreaterThan"; break;
         case T::GreaterThanEqual: name = "GreaterThanEqual"; break;
         case T::Equal: name = "Equal"; break;
+        case T::NotEqual: name = "NotEqual"; break;
         case T::Call: name = "Call"; break;
         case T::Id: name = "Id"; break;
         case T::Int: name = "Int"; break;

@@ -33,6 +33,7 @@ enum class AstNodeKind {
     GreaterThan,
     GreaterThanEqual,
     Equal,
+    NotEqual,
     Call,
     Id,
     Int,

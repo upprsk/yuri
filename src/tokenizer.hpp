@@ -30,6 +30,8 @@ enum class TokenType : uint8_t {
     StarEqual,
     Slash,
     SlashEqual,
+    Bang,
+    BangEqual,
     Semi,
     Colon,
     Comma,
@@ -74,6 +76,8 @@ struct Token {
     define_constructor(StarEqual);
     define_constructor(Slash);
     define_constructor(SlashEqual);
+    define_constructor(Bang);
+    define_constructor(BangEqual);
     define_constructor(Semi);
     define_constructor(Colon);
     define_constructor(Comma);
@@ -93,7 +97,9 @@ struct Token {
 
     constexpr auto is_eof() const -> bool { return type == TokenType::Eof; }
     constexpr auto is_id() const -> bool { return type == TokenType::Id; }
-    constexpr auto is_comment() const -> bool { return type == TokenType::Comment; }
+    constexpr auto is_comment() const -> bool {
+        return type == TokenType::Comment;
+    }
 
     constexpr auto is_kw(std::string_view source, std::string_view s) const
         -> bool {
@@ -107,7 +113,7 @@ auto tokenize(ErrorReporter* er, std::string_view source) -> std::vector<Token>;
 
 template <>
 struct fmt::formatter<yuri::TokenType> : formatter<string_view> {
-    auto format(yuri::TokenType c, format_context& ctx) const
+    auto format(yuri::TokenType t, format_context& ctx) const
         -> format_context::iterator;
 };
 

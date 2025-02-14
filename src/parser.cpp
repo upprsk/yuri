@@ -282,6 +282,8 @@ struct Parser {
                 kind = AstNodeKind::GreaterThanEqual;
             else if (t.type == TokenType::EqualEqual)
                 kind = AstNodeKind::Equal;
+            else if (t.type == TokenType::BangEqual)
+                kind = AstNodeKind::NotEqual;
             else
                 break;
 
