@@ -89,11 +89,15 @@ struct CodegenFunc {
                 } break;
                 case ssir::Opcode::Li:
                 case ssir::Opcode::Get:
-                case ssir::Opcode::Set: i++; break;
+                case ssir::Opcode::Set:
+                case ssir::Opcode::B:
+                case ssir::Opcode::Bz: i++; break;
+
                 case ssir::Opcode::Call:
                     i += 2;
                     is_not_leaf = true;
                     break;
+
                 default: break;
             }
         }
@@ -117,6 +121,8 @@ struct CodegenFunc {
     void codegen_body(ssir::Func const& f) {
         auto const& b = f.body;
 
+        size_t lbl{};
+
         auto binop = [&](std::string_view op) {
             auto rhs = pop_tmp();
             auto lhs = pop_tmp();
@@ -125,7 +131,13 @@ struct CodegenFunc {
             add_op(op, regs[dst], regs[lhs], regs[rhs]);
         };
 
-        for (size_t i = 0; i < b.text.size(); i++) {
+        size_t i = 0;
+        for (; i < b.text.size(); i++) {
+            if (lbl < b.labels.size() && b.label_at(lbl) == i) {
+                add_op("", fmt::format("{}.{}", f.name, lbl));
+                lbl++;
+            }
+
             auto c = b.opcode_at(i);
 
             switch (c) {
@@ -163,6 +175,20 @@ struct CodegenFunc {
                 case ssir::Opcode::Add: binop("addu"); break;
                 case ssir::Opcode::Sub: binop("subu"); break;
                 case ssir::Opcode::Slt: binop("slt"); break;
+                case ssir::Opcode::Sgt: binop("sgt"); break;
+
+                case ssir::Opcode::B: {
+                    auto label = f.body.text_at(++i);
+                    add_op("b", fmt::format("{}.{}", f.name, label));
+                } break;
+
+                case ssir::Opcode::Bz: {
+                    auto cmp = pop_tmp();
+
+                    auto label = f.body.text_at(++i);
+                    add_op("beq", regs[cmp], regs[0],
+                           fmt::format("{}.{}", f.name, label));
+                } break;
 
                 case ssir::Opcode::Call: {
                     auto id = f.body.text_at(++i);
@@ -190,6 +216,10 @@ struct CodegenFunc {
                                    fmt::underlying(c));
                     break;
             }
+        }
+
+        if (lbl < b.labels.size() && b.label_at(lbl) == i) {
+            add_op("", fmt::format("{}.{}", f.name, lbl));
         }
     }
 
@@ -328,7 +358,8 @@ struct CodegenFunc {
         for (auto const& op : output) {
             if (op.op == "lw" || op.op == "sw") {
                 fmt::println("    {} {}, {}({})", op.op, op.r, op.a, op.b);
-            } else if (op.op == "addu" || op.op == "subu") {
+            } else if (op.op == "addu" || op.op == "subu" || op.op == "slt" ||
+                       op.op == "sgt" || op.op == "beq") {
                 fmt::println("    {} {}, {}, {}", op.op, op.r, op.a, op.b);
             } else if (op.op == "move" || op.op == "li") {
                 fmt::println("    {} {}, {}", op.op, op.r, op.a);

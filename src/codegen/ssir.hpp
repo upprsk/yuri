@@ -23,6 +23,9 @@ enum class Opcode : uint8_t {
     Add,
     Sub,
     Slt,
+    Sgt,
+    B,
+    Bz,
     Call,
     Ret,
 };
@@ -44,6 +47,10 @@ struct Block {
         -> std::span<uint8_t const> {
         std::span s = data;
         return s.subspan(ptr, size);
+    }
+
+    [[nodiscard]] constexpr auto label_at(size_t i) const -> size_t {
+        return labels.at(i);
     }
 
     [[nodiscard]] constexpr auto id_at(size_t i) const -> std::string const& {
@@ -74,6 +81,12 @@ struct Block {
         return sz;
     }
 
+    auto append_label() -> size_t {
+        auto sz = labels.size();
+        labels.push_back(text.size());
+        return sz;
+    }
+
     void append_span(Span s) {
         if (spans.size() == 0) {
             spans.emplace_back(1, s);
@@ -91,6 +104,7 @@ struct Block {
     std::vector<uint8_t>                 text;
     std::vector<uint64_t>                consts;
     std::vector<uint8_t>                 data;
+    std::vector<size_t>                  labels;
     std::vector<std::string>             ids;
     std::vector<std::pair<size_t, Span>> spans;
 };

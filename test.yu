@@ -2,9 +2,11 @@ func add(x: int, y: int) int {
     return x + y;
 }
 
-func main() {
-    var a = add(1, 2);
-    // while a > 0 {
-        a = a - 1;
-    // }
+func main() int {
+    var i = 0;
+    while i < 2 {
+        i = add(i, 1);
+    }
+
+    return i;
 }

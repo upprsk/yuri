@@ -70,6 +70,18 @@ struct CodegenFunc {
 
     void codegen_stmt(AstNode const& node) {
         switch (node.kind) {
+            case AstNodeKind::Block: {
+                auto locals_start = locals.size();
+
+                for (auto const& stmt : node.children) {
+                    codegen_stmt(stmt);
+                }
+
+                for (size_t i = 0; i < locals.size() - locals_start; i++) {
+                    append_op(node.span, Opcode::Pop);
+                }
+            } break;
+
             case AstNodeKind::VarDecl:
                 codegen_expr(node.second());
                 append_op(node.span, Opcode::Local);
@@ -98,6 +110,23 @@ struct CodegenFunc {
 
                 append_op(lhs.span, Opcode::Set);
                 append_idx(node.span, local->slot);
+            } break;
+
+            case AstNodeKind::WhileStmt: {
+                auto start = append_label();
+                auto end = append_label();
+
+                codegen_expr(node.first());
+
+                append_op(node.span, Opcode::Bz);
+                append_idx(node.span, end);
+
+                codegen_stmt(node.second());
+
+                append_op(node.span, Opcode::B);
+                append_idx(node.span, start);
+
+                update_label_offest(end);
             } break;
 
             case AstNodeKind::ReturnStmt:
@@ -139,6 +168,7 @@ struct CodegenFunc {
             case AstNodeKind::Add: binop(Opcode::Add); break;
             case AstNodeKind::Sub: binop(Opcode::Sub); break;
             case AstNodeKind::LessThan: binop(Opcode::Slt); break;
+            case AstNodeKind::GreaterThan: binop(Opcode::Sgt); break;
 
             case AstNodeKind::Call: {
                 std::span args = node.children;
@@ -188,6 +218,7 @@ struct CodegenFunc {
 
         return nullptr;
     }
+
     void append_op(Span s, Opcode op) {
         f.body.append_op(op);
         f.body.append_span(s);
@@ -218,6 +249,11 @@ struct CodegenFunc {
 
         f.body.append_text(idx);
         f.body.append_span(s);
+    }
+
+    auto append_label() -> size_t { return f.body.append_label(); }
+    void update_label_offest(size_t label) {
+        f.body.labels.at(label) = f.body.text.size();
     }
 
     ErrorReporter*     er;
@@ -259,8 +295,14 @@ void dump_module(Module const& m) {
     for (auto const& [key, func] : m.entries) {
         fmt::println(stderr, "{}:", key);
 
+        size_t lbl{};
         size_t i{};
         for (; i < func.body.text.size(); i++) {
+            if (lbl < func.body.labels.size() && func.body.label_at(lbl) == i) {
+                fmt::println("{}:", lbl);
+                lbl++;
+            }
+
             auto c = func.body.opcode_at(i);
             fmt::print(stderr, "{:04d} | {}", i, c);
 
@@ -287,6 +329,12 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, ", {}B", sz);
                 } break;
 
+                case Opcode::B:
+                case Opcode::Bz: {
+                    auto label = func.body.text_at(++i);
+                    fmt::println(stderr, ", {}", label);
+                } break;
+
                 case Opcode::Call: {
                     auto id = func.body.text_at(++i);
                     auto argc = func.body.text_at(++i);
@@ -297,6 +345,7 @@ void dump_module(Module const& m) {
                 case Opcode::Add:
                 case Opcode::Sub:
                 case Opcode::Slt:
+                case Opcode::Sgt:
                 case Opcode::Ret: fmt::println(stderr, ""); break;
 
                 case Opcode::Invalid:
@@ -305,6 +354,11 @@ void dump_module(Module const& m) {
                                  fmt::underlying(c));
                     break;
             }
+        }
+
+        if (lbl < func.body.labels.size() && func.body.label_at(lbl) == i) {
+            fmt::println("{}:", lbl);
+            lbl++;
         }
     }
 }
@@ -325,6 +379,9 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::Add: name = "Add"; break;
         case yuri::ssir::Opcode::Sub: name = "Sub"; break;
         case yuri::ssir::Opcode::Slt: name = "Slt"; break;
+        case yuri::ssir::Opcode::Sgt: name = "Sgt"; break;
+        case yuri::ssir::Opcode::B: name = "B"; break;
+        case yuri::ssir::Opcode::Bz: name = "Bz"; break;
         case yuri::ssir::Opcode::Call: name = "Call"; break;
         case yuri::ssir::Opcode::Ret: name = "Ret"; break;
     }
