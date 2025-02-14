@@ -129,6 +129,31 @@ struct CodegenFunc {
                 update_label_offest(end);
             } break;
 
+            case AstNodeKind::IfStmt: {
+                codegen_expr(node.first());
+
+                auto wf = append_label();
+                auto end = wf;
+
+                append_op(node.span, Opcode::Bz);
+                append_idx(node.span, wf);
+
+                codegen_stmt(node.second());
+
+                if (!node.last().is_nil()) {
+                    end = append_label();
+                    append_op(node.span, Opcode::B);
+                    append_idx(node.span, end);
+                }
+
+                update_label_offest(wf);
+
+                if (!node.last().is_nil()) {
+                    codegen_stmt(node.last());
+                    update_label_offest(end);
+                }
+            } break;
+
             case AstNodeKind::ExprStmt:
                 codegen_expr(node.first());
                 append_op(node.span, Opcode::Pop);

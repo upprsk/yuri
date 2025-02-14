@@ -4,6 +4,17 @@ asm func printi(v: int) {
     "jr $ra"
 }
 
+asm func readi() int {
+    "li $v0, 5"
+    "syscall"
+    "jr $ra"
+}
+
 func main() int {
-    printi(42);
+    var input = readi();
+    if input < 18 {
+        printi(0);
+    } else {
+        printi(42);
+    }
 }
