@@ -32,6 +32,21 @@ static constexpr std::array<std::string_view, 32> regs{
     "$t8",   "$t9", "$k0", "$k1", "$gp", "$sp", "$fp", "$ra",
 };
 
+struct Op {
+    std::string op;
+    std::string r;
+    std::string a;
+    std::string b;
+
+    static auto init(std::string op, std::string r, std::string a = "",
+                     std::string b = "") -> Op {
+        return {.op = std::move(op),
+                .r = std::move(r),
+                .a = std::move(a),
+                .b = std::move(b)};
+    }
+};
+
 struct CodegenFunc {
     struct Local {
         size_t offset;
@@ -45,20 +60,21 @@ struct CodegenFunc {
         codegen_pramble(f);
         codegen_body(f);
         codegen_postamble(f);
+
+        optimize(f);
+        dump_output(f);
     }
 
     void process(ssir::Func const& f) {
         auto const& b = f.body;
 
-        size_t count{};
-
         std::span args = f.type.inner;
         args = args.subspan(0, args.size() - 1);
         for (auto const& arg : args) {
-            auto l = Local{.offset = 0, .idx = count, .size = arg.bytesize()};
+            auto l = Local{
+                .offset = 0, .idx = locals.size(), .size = arg.bytesize()};
 
             locals.push_back(l);
-            count++;
         }
 
         for (size_t i = 0; i < b.text.size(); i++) {
@@ -67,13 +83,9 @@ struct CodegenFunc {
             switch (c) {
                 case ssir::Opcode::Local: {
                     auto sz = f.body.text_at(++i);
-                    auto l = Local{.offset = 0, .idx = count, .size = sz};
-
-                    // er->report_note(b.span_for(i), "found local: {},
-                    // offset={}", count, l.offset);
+                    auto l =
+                        Local{.offset = 0, .idx = locals.size(), .size = sz};
                     locals.push_back(l);
-
-                    count++;
                 } break;
                 case ssir::Opcode::Li:
                 case ssir::Opcode::Get: i++; break;
@@ -92,10 +104,10 @@ struct CodegenFunc {
             stack_size += word_size;
         }
 
-        for (size_t i = 0; i < locals.size(); i++) {
-            locals.at(i).offset = stack_size;
+        for (auto& l : locals) {
+            l.offset = stack_size;
             // FIXME: use proper alignment
-            stack_size += ALIGN_4(locals.at(i).size);
+            stack_size += ALIGN_4(l.size);
         }
 
         stack_size = ALIGN_8(stack_size);
@@ -109,8 +121,7 @@ struct CodegenFunc {
             auto lhs = pop_tmp();
             auto dst = push_tmp();
 
-            fmt::println("    {} {}, {}, {}", op, regs[dst], regs[lhs],
-                         regs[rhs]);
+            add_op(op, regs[dst], regs[lhs], regs[rhs]);
         };
 
         for (size_t i = 0; i < b.text.size(); i++) {
@@ -123,7 +134,7 @@ struct CodegenFunc {
                     auto dst = push_local();
                     auto src = pop_tmp();
 
-                    fmt::println("    move {}, {}", regs[dst], regs[src]);
+                    add_op("move", regs[dst], regs[src]);
                 } break;
 
                 case ssir::Opcode::Li: {
@@ -131,15 +142,14 @@ struct CodegenFunc {
                     auto v = f.body.const_at(idx);
                     auto dst = push_tmp();
 
-                    fmt::println("    li {}, {}", regs[dst], v);
+                    add_op("li", regs[dst], fmt::to_string(v));
                 } break;
 
                 case ssir::Opcode::Get: {
                     auto slot = f.body.text_at(++i);
                     auto dst = push_tmp();
 
-                    fmt::println("    move {}, {}", regs[dst],
-                                 regs[reg_loc_base + slot]);
+                    add_op("move", regs[dst], regs[reg_loc_base + slot]);
                 } break;
 
                 case ssir::Opcode::Add: binop("addu"); break;
@@ -151,20 +161,19 @@ struct CodegenFunc {
                     auto argc = f.body.text_at(++i);
                     for (size_t i = argc; i > 0; i--) {
                         auto r = pop_tmp();
-                        fmt::println("    move {}, {}",
-                                     regs[reg_args_base + i - 1], regs[r]);
+                        add_op("move", regs[reg_args_base + i - 1], regs[r]);
                     }
 
-                    fmt::println("    jal {}", f.body.id_at(id));
+                    add_op("jal", f.body.id_at(id));
 
                     auto r = push_tmp();
-                    fmt::println("    move {}, {}", regs[r], regs[reg_v0]);
+                    add_op("move", regs[r], regs[reg_v0]);
                 } break;
 
                 case ssir::Opcode::Ret: {
                     auto v = pop_tmp();
-                    fmt::println("    move $v0, {}", regs[v]);
-                    fmt::println("    b .ret");
+                    add_op("move", regs[reg_v0], regs[v]);
+                    add_op("b", fmt::format("{}.ret", f.name));
                 } break;
 
                 default:
@@ -177,27 +186,24 @@ struct CodegenFunc {
     }
 
     void codegen_pramble(ssir::Func const& f) {
-        fmt::println("");
-        fmt::println("# {}", f.type);
-        fmt::println("{}:", f.name);
+        // add_op("", f.name);
 
-        fmt::println("    subu $sp, $sp, {}", stack_size);
+        add_op("subu", regs[reg_sp], regs[reg_sp], fmt::to_string(stack_size));
 
         auto argc = f.type.inner.size() - 1;
 
         if (is_not_leaf) {
             // $ra is in offset 0
-            fmt::println("    sw {}, {}($sp)", regs[reg_ra], 0);
+            add_op("sw", regs[reg_ra], "0", regs[reg_sp]);
         }
 
         size_t i{};
         for (auto const& local : locals) {
-            fmt::println("    sw {}, {}($sp)", regs[reg_loc_base + i],
-                         local.offset);
+            add_op("sw", regs[reg_loc_base + i], fmt::to_string(local.offset),
+                   regs[reg_sp]);
 
             if (i < argc) {
-                fmt::println("    move {}, {}", regs[reg_loc_base + i],
-                             regs[reg_args_base + i]);
+                add_op("move", regs[reg_loc_base + i], regs[reg_args_base + i]);
             }
 
             i++;
@@ -205,25 +211,140 @@ struct CodegenFunc {
     }
 
     void codegen_postamble(ssir::Func const& f) {
-        fmt::println("    .ret:");
+        add_op("", fmt::format("{}.ret", f.name));
 
         if (is_not_leaf) {
             // $ra is in offset 0
-            fmt::println("    lw {}, {}($sp)", regs[reg_ra], 0);
+            add_op("lw", regs[reg_ra], "0", regs[reg_sp]);
         }
 
         size_t i{};
         for (auto const& local : locals) {
-            fmt::println("    lw {}, {}($sp)", regs[reg_loc_base + i],
-                         local.offset);
+            add_op("lw", regs[reg_loc_base + i], fmt::to_string(local.offset),
+                   regs[reg_sp]);
 
             i++;
         }
 
-        fmt::println("    addu $sp, $sp, {}", stack_size);
+        add_op("addu", regs[reg_sp], regs[reg_sp], fmt::to_string(stack_size));
+        add_op("jr", regs[reg_ra]);
+    }
 
-        fmt::println("    jr $ra");
-        fmt::println("# end of {}", f.name);
+    // ----------------------------------------------------------------------------
+
+    void optimize(ssir::Func const& f) {
+        fmt::println("# ====== optimizing {}", f.name);
+
+        auto had_change = false;
+        do {
+            had_change = false;
+
+            fmt::println("# running pass...");
+
+            for (size_t i = 1; i < output.size(); i++) {
+                auto const& prev = output.at(i - 1);
+                auto const& curr = output.at(i);
+
+                //    move tA, B
+                //    addu _, _, tA
+                // -> addu _, _, B
+                if (prev.op == "move" &&
+                    (curr.op == "addu" || curr.op == "subu") &&
+                    prev.r.at(1) == 't' && prev.r == curr.b) {
+                    had_change = true;
+                    output.at(i) = Op::init(curr.op, curr.r, curr.a, prev.a);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
+                //    move tA, B
+                //    addu _, tA, _
+                // -> addu _, B, _
+                else if (prev.op == "move" &&
+                         (curr.op == "addu" || curr.op == "subu") &&
+                         prev.r.at(1) == 't' && prev.r == curr.a) {
+                    had_change = true;
+                    output.at(i) = Op::init(curr.op, curr.r, prev.a, curr.b);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
+                //    addu tA, _, _
+                //    move B, tA
+                // -> addu B, _, _
+                else if ((prev.op == "addu" || prev.op == "subu") &&
+                         curr.op == "move" && prev.r.at(1) == 't' &&
+                         prev.r == curr.a) {
+                    had_change = true;
+                    output.at(i) = Op::init(prev.op, curr.r, prev.a, prev.b);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
+                //    move tA, B
+                //    move C, tA
+                // -> move C, B
+                else if (prev.op == "move" && curr.op == "move" &&
+                         prev.r.at(1) == 't' && prev.r == curr.a) {
+                    had_change = true;
+                    output.at(i) = Op::init(curr.op, curr.r, prev.a);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
+                //    li tA, _
+                //    move B, tA
+                // -> li B, _
+                else if (prev.op == "li" && curr.op == "move" &&
+                         prev.r.at(1) == 't') {
+                    had_change = true;
+                    output.at(i) = Op::init(prev.op, curr.r, prev.a);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
+                //    b A
+                //    A:
+                // -> A:
+                else if (prev.op == "b" && curr.op == "" && prev.r == curr.r) {
+                    had_change = true;
+                    output.at(i) = Op::init(curr.op, curr.r);
+                    output.erase(output.begin() + i-- - 1);
+                }
+            }
+        } while (had_change);
+
+        fmt::println("# ====== optimized {}", f.name);
+    }
+
+    void dump_output(ssir::Func const& f) {
+        fmt::println("");
+        fmt::println("# {}", f.type);
+        fmt::println("{}:", f.name);
+
+        for (auto const& op : output) {
+            if (op.op == "lw" || op.op == "sw") {
+                fmt::println("    {} {}, {}({})", op.op, op.r, op.a, op.b);
+            } else if (op.op == "addu" || op.op == "subu") {
+                fmt::println("    {} {}, {}, {}", op.op, op.r, op.a, op.b);
+            } else if (op.op == "move" || op.op == "li") {
+                fmt::println("    {} {}, {}", op.op, op.r, op.a);
+            } else if (op.op == "jr" || op.op == "jal" || op.op == "b") {
+                fmt::println("    {} {}", op.op, op.r);
+            } else if (op.op == "" && op.r.at(0) == '.') {
+                fmt::println("    {}:", op.r);
+            } else if (op.op == "") {
+                fmt::println("{}:", op.r);
+            } else {
+                fmt::println("# op='{}', r='{}', a='{}', b='{}'", op.op, op.r,
+                             op.a, op.b);
+            }
+        }
+    }
+
+    // ----------------------------------------------------------------------------
+
+    // ----------------------------------------------------------------------------
+
+    void add_op(std::string_view op, std::string_view r,
+                std::string_view a = "", std::string_view b = "") {
+        using S = std::string;
+        output.push_back({S{op}, S{r}, S{a}, S{b}});
     }
 
     constexpr auto push_tmp() -> size_t { return stack_top++; }
@@ -234,7 +355,8 @@ struct CodegenFunc {
 
     ErrorReporter* er;
 
-    std::vector<Local> locals{};
+    std::vector<Op>    output;
+    std::vector<Local> locals;
 
     size_t stack_top{reg_tmp_base};
     size_t locals_top{reg_loc_base};
@@ -251,7 +373,10 @@ struct Codegen {
     }
 
     void codegen_func(ssir::Func const& f) {
-        auto c = CodegenFunc{.er = er};
+        fmt::println(
+            "# --------------------------------------------------------------");
+
+        auto c = CodegenFunc{.er = er, .output = {}, .locals = {}};
         c.codegen(f);
     }
 
@@ -261,7 +386,10 @@ struct Codegen {
 void codegen_stdout(ssir::Module const& m, ErrorReporter& er) {
     auto c = Codegen{.er = &er};
 
+    fmt::println(".set noreorder");
+    fmt::println("");
     fmt::println(".text");
+    fmt::println(".global _start");
     fmt::println("_start:");
     fmt::println("    jal main");
     fmt::println("    li $v0, 10");
