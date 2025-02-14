@@ -4,6 +4,7 @@ source_file ::= { top_decl } ;
 
 top_decl ::= func_decl
            | asm_func_decl
+           | var_decl
            ;
 
 func_decl     ::= "func" ID "(" [ func_decl_args ] ")" [ expr ] block ;
