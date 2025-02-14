@@ -27,23 +27,29 @@ enum class Opcode : uint8_t {
 };
 
 struct Block {
-    constexpr auto opcode_at(size_t i) const -> Opcode {
+    [[nodiscard]] constexpr auto opcode_at(size_t i) const -> Opcode {
         return static_cast<Opcode>(text_at(i));
     }
 
-    constexpr auto text_at(size_t i) const -> uint8_t { return text.at(i); }
-    constexpr auto const_at(size_t i) const -> uint64_t { return consts.at(i); }
-    constexpr auto data_span(size_t ptr, size_t size) const
+    [[nodiscard]] constexpr auto text_at(size_t i) const -> uint8_t {
+        return text.at(i);
+    }
+
+    [[nodiscard]] constexpr auto const_at(size_t i) const -> uint64_t {
+        return consts.at(i);
+    }
+
+    [[nodiscard]] constexpr auto data_span(size_t ptr, size_t size) const
         -> std::span<uint8_t const> {
         std::span s = data;
         return s.subspan(ptr, size);
     }
 
-    constexpr auto id_at(size_t i) const -> std::string const& {
+    [[nodiscard]] constexpr auto id_at(size_t i) const -> std::string const& {
         return ids.at(i);
     }
 
-    constexpr auto span_for(size_t i) const -> Span {
+    [[nodiscard]] constexpr auto span_for(size_t i) const -> Span {
         size_t off{};
         for (auto const& [cnt, span] : spans) {
             off += cnt;
@@ -69,7 +75,7 @@ struct Block {
 
     void append_span(Span s) {
         if (spans.size() == 0) {
-            spans.push_back({1, s});
+            spans.emplace_back(1, s);
             return;
         }
 
@@ -78,7 +84,7 @@ struct Block {
             return;
         }
 
-        spans.push_back({1, s});
+        spans.emplace_back(1, s);
     }
 
     std::vector<uint8_t>                 text;
