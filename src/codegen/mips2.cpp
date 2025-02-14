@@ -77,7 +77,10 @@ struct CodegenFunc {
                 } break;
                 case ssir::Opcode::Li:
                 case ssir::Opcode::Get: i++; break;
-                case ssir::Opcode::Call: is_not_leaf = true; break;
+                case ssir::Opcode::Call:
+                    i += 2;
+                    is_not_leaf = true;
+                    break;
                 default: break;
             }
         }
