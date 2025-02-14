@@ -126,6 +126,7 @@ struct CodegenFunc {
 
                 case ssir::Opcode::Add: binop("addu"); break;
                 case ssir::Opcode::Sub: binop("subu"); break;
+                case ssir::Opcode::Slt: binop("slt"); break;
 
                 case ssir::Opcode::Ret: {
                     auto v = pop_tmp();

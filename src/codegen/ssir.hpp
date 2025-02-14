@@ -21,6 +21,7 @@ enum class Opcode : uint8_t {
     Get,
     Add,
     Sub,
+    Slt,
     Ret,
 };
 

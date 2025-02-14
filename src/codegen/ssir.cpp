@@ -113,6 +113,7 @@ struct CodegenFunc {
 
             case AstNodeKind::Add: binop(Opcode::Add); break;
             case AstNodeKind::Sub: binop(Opcode::Sub); break;
+            case AstNodeKind::LessThan: binop(Opcode::Slt); break;
             default:
                 er->report_bug(node.span, "invalid node for expression: {}",
                                node.kind);
@@ -218,6 +219,7 @@ void dump_module(Module const& m) {
                 case Opcode::Pop:
                 case Opcode::Add:
                 case Opcode::Sub:
+                case Opcode::Slt:
                 case Opcode::Ret: fmt::println(stderr, ""); break;
 
                 case Opcode::Invalid:
@@ -244,6 +246,7 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::Get: name = "Get"; break;
         case yuri::ssir::Opcode::Add: name = "Add"; break;
         case yuri::ssir::Opcode::Sub: name = "Sub"; break;
+        case yuri::ssir::Opcode::Slt: name = "Slt"; break;
         case yuri::ssir::Opcode::Ret: name = "Ret"; break;
     }
 

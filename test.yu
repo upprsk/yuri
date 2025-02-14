@@ -12,6 +12,10 @@ func inc(i: int) int {
     return i + 1;
 }
 
+func test(i: int) bool {
+    return i < 10;
+}
+
 func main() int {
     var a = 12;
     // var b = inc(31);

@@ -44,6 +44,10 @@ public:
 
     // -----------------------------------------------------------------------
 
+    constexpr auto had_error() const -> bool { return error_count > 0; }
+
+    // -----------------------------------------------------------------------
+
 private:
     constexpr auto find_rowcol(Span s) const -> std::pair<uint32_t, uint32_t> {
         uint32_t col{};
