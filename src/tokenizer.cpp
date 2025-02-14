@@ -116,6 +116,7 @@ struct Tokenizer {
             case 'A' ... 'Z':
             case '_': return tokenize_id();
             case '0' ... '9': return tokenize_number();
+            case '"': return tokenize_string();
             default: {
                 er->report_error(span(), "unexpected character: {:?}",
                                  static_cast<char>(c));
@@ -134,6 +135,19 @@ struct Tokenizer {
         while (is_alpha(peek()) || is_digit(peek()) || peek() == '_') advance();
 
         return Token::Id(span());
+    }
+
+    auto tokenize_string() -> Token {
+        while (!is_at_end() && peek() != '"') {
+            if (peek() == '\\') advance();
+            advance();
+        }
+
+        if (!match('"')) {
+            er->report_error(span(), "unterminated string");
+        }
+
+        return Token::Str(span());
     }
 
     constexpr auto tokenize_comment() -> Token {
@@ -204,6 +218,7 @@ auto fmt::formatter<yuri::TokenType>::format(yuri::TokenType t,
         case T::Rbracket: name = "Rbracket"; break;
         case T::Id: name = "Id"; break;
         case T::Int: name = "Int"; break;
+        case T::Str: name = "Str"; break;
         case T::Comment: name = "Comment"; break;
         case T::Eof: name = "Eof"; break;
         case T::Err: name = "Err"; break;

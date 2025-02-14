@@ -43,6 +43,7 @@ enum class TokenType : uint8_t {
     Rbracket,
     Id,
     Int,
+    Str,
     Comment,
     Eof,
     Err,
@@ -89,6 +90,7 @@ struct Token {
     define_constructor(Rbracket);
     define_constructor(Id);
     define_constructor(Int);
+    define_constructor(Str);
     define_constructor(Comment);
     define_constructor(Eof);
     define_constructor(Err);
