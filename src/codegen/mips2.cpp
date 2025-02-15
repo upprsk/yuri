@@ -8,6 +8,7 @@
 #include "error_reporter.hpp"
 #include "fmt/base.h"
 #include "fmt/format.h"
+#include "fmt/ranges.h"
 
 #define ALIGN(addr, n) ((addr) + ((n) - 1)) & -(n)
 
@@ -276,6 +277,12 @@ struct CodegenFunc {
 
                     auto op = op_for_store(global->second.type);
                     add_op(op, regs[r], f.body.id_at(name), "$zero");
+                } break;
+
+                case ssir::Opcode::GetStatic: {
+                    auto id = f.body.text_at(++i);
+                    auto r = push_tmp();
+                    add_op("la", regs[r], fmt::format("s_{}", id));
                 } break;
 
                 case ssir::Opcode::Get: {
@@ -797,6 +804,19 @@ struct Codegen {
         fmt::println(".set noreorder");
         fmt::println("");
         fmt::println(".data");
+
+        for (auto const& [id, v] : m.statics) {
+            if (v.align != 1) {
+                er->report_bug(
+                    {}, "alignment different from 1 not implemented, found {}",
+                    v.align);
+            }
+
+            fmt::print("s_{}: .byte ", v.id);
+            fmt::print("{}", fmt::join(v.data, ", "));
+        }
+
+        fmt::println("");
 
         for (auto const& [k, v] : m.globals) {
             // FIXME: use the right size for the variable

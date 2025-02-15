@@ -2,6 +2,6 @@ asm func printi(v: int) { "li $v0, 1" "syscall" "jr $ra" }
 asm func print_str(s: *byte) { "li $v0, 4" "syscall" "jr $ra" }
 
 func main() int {
-    var items = []byte{72 as byte, 101 as byte, 108 as byte, 108 as byte, 111 as byte, 10 as byte, 0 as byte};
+    var items = "Hello, world!";
     print_str(items as *byte);
 }

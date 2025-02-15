@@ -25,6 +25,7 @@ enum class Opcode : uint8_t {
     Global,
     GetGlobal,
     SetGlobal,
+    GetStatic,
     Get,
     Set,
     Iset,
@@ -139,10 +140,18 @@ struct Global {
     uint64_t    initial_value;
 };
 
+struct Static {
+    size_t               id;
+    size_t               size;
+    size_t               align;
+    std::vector<uint8_t> data;
+};
+
 struct Module {
     std::unordered_map<std::string, Func>    entries;
     std::unordered_map<std::string, AsmFunc> asm_entries;
     std::unordered_map<std::string, Global>  globals;
+    std::unordered_map<size_t, Static>       statics;
 };
 
 auto codegen(AstNode const& ast, ErrorReporter& er) -> Module;

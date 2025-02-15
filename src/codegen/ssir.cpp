@@ -201,6 +201,25 @@ struct CodegenFunc {
                 append_op(node.span, Opcode::Li);
                 append_const(node.span, node.value_int());
                 break;
+
+            case AstNodeKind::Str: {
+                std::vector<uint8_t> data;
+                for (auto const& c : node.value_string()) data.push_back(c);
+                data.push_back(0);
+
+                auto s = Static{
+                    .id = m->statics.size(),
+                    .size = data.size(),
+                    .align = 1,
+                    .data = data,
+                };
+
+                m->statics[s.id] = s;
+
+                append_op(node.span, Opcode::GetStatic);
+                append_idx(node.span, s.id);
+            } break;
+
             case AstNodeKind::Id: {
                 auto local = find_local(node.value_string());
                 if (!local) {
@@ -571,6 +590,11 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, ", {}", func.body.id_at(name));
                 } break;
 
+                case Opcode::GetStatic: {
+                    auto id = func.body.text_at(++i);
+                    fmt::println(stderr, ", {}", id);
+                } break;
+
                 case Opcode::Ref:
                 case Opcode::Get:
                 case Opcode::Set: {
@@ -642,6 +666,7 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::Global: name = "Global"; break;
         case yuri::ssir::Opcode::GetGlobal: name = "GetGlobal"; break;
         case yuri::ssir::Opcode::SetGlobal: name = "SetGlobal"; break;
+        case yuri::ssir::Opcode::GetStatic: name = "GetStatic"; break;
         case yuri::ssir::Opcode::Get: name = "Get"; break;
         case yuri::ssir::Opcode::Set: name = "Set"; break;
         case yuri::ssir::Opcode::Iset: name = "Iset"; break;

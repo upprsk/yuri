@@ -222,6 +222,10 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
         case AstNodeKind::Int: {
             return set_type(Type::Int());
         }
+        case AstNodeKind::Str: {
+            return set_type(
+                Type::Array(Type::Byte(), value_string().length() + 1));
+        } break;
         case AstNodeKind::Err: break;
     }
 
