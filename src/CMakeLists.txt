@@ -1,8 +1,6 @@
 add_library(yuri
     ast.cpp
     ast.hpp
-    codegen/mips.cpp
-    codegen/mips.hpp
     codegen/mips2.cpp
     codegen/mips2.hpp
     codegen/ssir.cpp

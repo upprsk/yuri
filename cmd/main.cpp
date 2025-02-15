@@ -3,7 +3,6 @@
 #include <optional>
 #include <string>
 
-#include "codegen/mips.hpp"
 #include "codegen/mips2.hpp"
 #include "codegen/ssir.hpp"
 #include "cpptrace/from_current.hpp"
