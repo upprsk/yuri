@@ -515,6 +515,7 @@ struct Codegen {
 
                 m.globals[decl.value_string()] = {
                     .name = decl.value_string(),
+                    .type = decl.type,
                     .initial_value = init.value_int()};
             } else {
                 er->report_bug(decl.span, "unexpected node in top-level: {}",
