@@ -482,6 +482,17 @@ struct CodegenFunc {
                     output.erase(output.begin() + i-- - 1);
                 }
 
+                //    addiu tA, _, _
+                //    move C, tA
+                // -> addiu C, _, _
+                else if ((prev.op == "addiu" || prev.op == "subiu") &&
+                         curr.op == "move" && prev.r.at(1) == 't' &&
+                         prev.r == curr.a) {
+                    had_change = true;
+                    output.at(i) = Op::init(prev.op, curr.r, prev.a, prev.b);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
                 //    move tA, B
                 //    move C, tA
                 // -> move C, B
@@ -552,6 +563,27 @@ struct CodegenFunc {
                 else if (prev.op == "b" && curr.op == "" && prev.r == curr.r) {
                     had_change = true;
                     output.at(i) = Op::init(curr.op, curr.r);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
+                //    lw tA, _
+                //    move aB, tA
+                //    lw aB, _
+                else if (prev.op == "lw" && curr.op == "move" &&
+                         prev.r.at(1) == 't' && curr.r.at(1) == 'a' &&
+                         prev.r == curr.a) {
+                    had_change = true;
+                    output.at(i) = Op::init(prev.op, curr.r, prev.a, prev.b);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
+                //    move tA, B
+                //    lw tC, (tA)
+                // -> lw tC, (B)
+                else if (prev.op == "move" && curr.op == "lw" &&
+                         prev.r.at(1) == 't' && prev.r == curr.b) {
+                    had_change = true;
+                    output.at(i) = Op::init(curr.op, curr.r, curr.a, prev.a);
                     output.erase(output.begin() + i-- - 1);
                 }
             }
