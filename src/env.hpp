@@ -10,12 +10,15 @@
 namespace yuri {
 
 struct Env {
-    auto child() -> Env { return {.parent = this}; }
+    auto child() -> Env { return {.entries = {}, .parent = this}; }
 
     auto with_return_type(Type const* ty, Span span) -> Env {
-        return {.current_return_type = ty,
-                .current_return_span = span,
-                .parent = this};
+        return {
+            .current_return_type = ty,
+            .current_return_span = span,
+            .entries = {},
+            .parent = this,
+        };
     }
 
     auto lookup_return_type() const -> std::pair<Type const*, Span>;
@@ -35,7 +38,7 @@ struct Env {
 
     Type const* current_return_type = nullptr;
     Span        current_return_span{};
-    std::unordered_map<std::string, std::pair<Type, Type>> entries{};
+    std::unordered_map<std::string, std::pair<Type, Type>> entries;
     Env*                                                   parent{};
 };
 
