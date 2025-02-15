@@ -15,11 +15,13 @@ namespace yuri::ssir {
 
 enum class Opcode : uint8_t {
     Invalid,
+    Dupe,
     Local,
     Li,
     Pop,
     Ref,
     DeRef,
+    Alloca,
     Global,
     GetGlobal,
     SetGlobal,

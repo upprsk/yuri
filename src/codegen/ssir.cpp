@@ -219,6 +219,27 @@ struct CodegenFunc {
                 append_idx(node.span, local->slot);
             } break;
 
+            case AstNodeKind::Array: {
+                append_op(node.span, Opcode::Alloca);
+                append_idx(node.span, node.type.bytesize());
+
+                std::span items = node.children;
+                items = items.subspan(2);
+
+                size_t offset{};
+
+                for (auto const& item : items) {
+                    append_op(node.span, Opcode::Dupe);
+                    append_op(node.span, Opcode::Li);
+                    append_const(node.span, offset);
+                    offset += item.type.bytesize();
+                    append_op(node.span, Opcode::Add);
+
+                    codegen_expr(item);
+                    append_op(item.span, Opcode::Iset);
+                }
+            } break;
+
             case AstNodeKind::Add: binop(Opcode::Add); break;
             case AstNodeKind::Sub: binop(Opcode::Sub); break;
             case AstNodeKind::LessThan: binop(Opcode::Slt); break;
@@ -469,6 +490,11 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, "[{}], {}", idx, v);
                 } break;
 
+                case Opcode::Alloca: {
+                    auto size = func.body.text_at(++i);
+                    fmt::println(stderr, ", {}B", size);
+                } break;
+
                 case Opcode::Global:
                 case Opcode::GetGlobal:
                 case Opcode::SetGlobal: {
@@ -501,6 +527,7 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, ", {}, {}", func.body.id_at(id), argc);
                 } break;
 
+                case Opcode::Dupe:
                 case Opcode::Iset:
                 case Opcode::DeRef:
                 case Opcode::Pop:
@@ -535,11 +562,13 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
     string_view name = "unknown";
     switch (c) {
         case yuri::ssir::Opcode::Invalid: name = "Invalid"; break;
+        case yuri::ssir::Opcode::Dupe: name = "Dupe"; break;
         case yuri::ssir::Opcode::Local: name = "Local"; break;
         case yuri::ssir::Opcode::Li: name = "Li"; break;
         case yuri::ssir::Opcode::Pop: name = "Pop"; break;
         case yuri::ssir::Opcode::Ref: name = "Ref"; break;
         case yuri::ssir::Opcode::DeRef: name = "DeRef"; break;
+        case yuri::ssir::Opcode::Alloca: name = "Alloca"; break;
         case yuri::ssir::Opcode::Global: name = "Global"; break;
         case yuri::ssir::Opcode::GetGlobal: name = "GetGlobal"; break;
         case yuri::ssir::Opcode::SetGlobal: name = "SetGlobal"; break;

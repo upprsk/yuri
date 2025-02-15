@@ -57,6 +57,11 @@ struct CodegenFunc {
         bool   has_addr_taken;
     };
 
+    struct MemRegions {
+        size_t offset;
+        size_t size;
+    };
+
     void codegen(ssir::Func const& f) {
         process(f);
 
@@ -106,6 +111,11 @@ struct CodegenFunc {
                     locals.push_back(l);
                 } break;
 
+                case ssir::Opcode::Alloca: {
+                    auto size = f.body.text_at(++i);
+                    mregions.push_back({.offset = 0, .size = size});
+                } break;
+
                 case ssir::Opcode::Ref: {
                     auto idx = b.text_at(++i);
                     locals.at(idx).has_addr_taken = true;
@@ -144,6 +154,11 @@ struct CodegenFunc {
             stack_size += ALIGN_4(l.size);
         }
 
+        for (auto& mr : mregions) {
+            mr.offset = stack_size;
+            stack_size += ALIGN_4(mr.size);
+        }
+
         stack_size = ALIGN_8(stack_size);
     }
 
@@ -151,6 +166,7 @@ struct CodegenFunc {
         auto const& b = f.body;
 
         size_t lbl{};
+        size_t alloca{};
 
         auto binop = [&](std::string_view op) {
             auto rhs = pop_tmp();
@@ -170,6 +186,14 @@ struct CodegenFunc {
             auto c = b.opcode_at(i);
 
             switch (c) {
+                case ssir::Opcode::Dupe: {
+                    auto r = pop_tmp();
+                    auto a = push_tmp();
+                    auto b = push_tmp();
+
+                    add_op("move", regs[b], regs[r]);
+                } break;
+
                 case ssir::Opcode::Local: {
                     auto slot = f.body.text_at(++i);
                     if (slot != locals.at(slot).slot) {
@@ -312,6 +336,14 @@ struct CodegenFunc {
                            fmt::to_string(locals.at(slot).offset));
                 } break;
 
+                case ssir::Opcode::Alloca: {
+                    auto size = f.body.text_at(++i);
+                    auto idx = alloca++;
+                    auto r = push_tmp();
+                    add_op("addiu", regs[r], regs[reg_sp],
+                           fmt::to_string(mregions.at(idx).offset));
+                } break;
+
                 case ssir::Opcode::DeRef: {
                     auto ptr = pop_tmp();
                     auto r = push_tmp();
@@ -345,8 +377,8 @@ struct CodegenFunc {
 
                 default:
                     er->report_bug(b.span_for(i),
-                                   "invalid opcode found in codegen: {}",
-                                   fmt::underlying(c));
+                                   "invalid opcode found in codegen: {} ({})",
+                                   fmt::underlying(c), c);
                     break;
             }
         }
@@ -465,7 +497,8 @@ struct CodegenFunc {
                          (curr.op == "addu" || curr.op == "subu" ||
                           curr.op == "beq" || curr.op == "bne" ||
                           curr.op == "blt" || curr.op == "ble" ||
-                          curr.op == "bgt" || curr.op == "bge") &&
+                          curr.op == "bgt" || curr.op == "bge" ||
+                          curr.op == "addiu" || curr.op == "subiu") &&
                          prev.r.at(1) == 't' && prev.r == curr.a) {
                     had_change = true;
                     output.at(i) = Op::init(curr.op, curr.r, prev.a, curr.b);
@@ -505,6 +538,14 @@ struct CodegenFunc {
                     had_change = true;
                     output.at(i) = Op::init(prev.op, curr.r, prev.a, prev.b);
                     output.erase(output.begin() + i-- - 1);
+                }
+
+                //    addu tA, B, $zero
+                // -> move tA, B
+                else if (prev.op == "addu" && prev.r.at(1) == 't' &&
+                         prev.b == "$zero") {
+                    had_change = true;
+                    output.at(--i) = Op::init("move", prev.r, prev.a);
                 }
 
                 //    move tA, B
@@ -655,8 +696,9 @@ struct CodegenFunc {
 
     ErrorReporter* er;
 
-    std::vector<Op>    output;
-    std::vector<Local> locals;
+    std::vector<Op>         output;
+    std::vector<Local>      locals;
+    std::vector<MemRegions> mregions;
 
     size_t stack_top{reg_tmp_base};
     size_t locals_top{reg_loc_base};
@@ -704,7 +746,8 @@ struct Codegen {
         fmt::println(
             "# --------------------------------------------------------------");
 
-        auto c = CodegenFunc{.er = er, .output = {}, .locals = {}};
+        auto c =
+            CodegenFunc{.er = er, .output = {}, .locals = {}, .mregions = {}};
         c.codegen(f);
     }
 
