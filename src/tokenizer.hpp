@@ -36,6 +36,10 @@ enum class TokenType : uint8_t {
     Semi,
     Colon,
     Comma,
+    Dot,
+    DotDot,
+    DotStar,
+    DotEqual,
     Lparen,
     Rparen,
     Lbrace,
@@ -84,6 +88,10 @@ struct Token {
     define_constructor(Semi);
     define_constructor(Colon);
     define_constructor(Comma);
+    define_constructor(Dot);
+    define_constructor(DotDot);
+    define_constructor(DotStar);
+    define_constructor(DotEqual);
     define_constructor(Lparen);
     define_constructor(Rparen);
     define_constructor(Lbrace);

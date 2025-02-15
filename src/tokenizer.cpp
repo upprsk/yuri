@@ -110,6 +110,11 @@ struct Tokenizer {
             case ':': return Token::Colon(span());
             case ';': return Token::Semi(span());
             case ',': return Token::Comma(span());
+            case '.':
+                if (match('.')) return Token::DotDot(span());
+                if (match('=')) return Token::DotEqual(span());
+                if (match('*')) return Token::DotStar(span());
+                return Token::Dot(span());
             case '(': return Token::Lparen(span());
             case ')': return Token::Rparen(span());
             case '{': return Token::Lbrace(span());
@@ -215,6 +220,10 @@ auto fmt::formatter<yuri::TokenType>::format(yuri::TokenType t,
         case T::Semi: name = "Semi"; break;
         case T::Colon: name = "Colon"; break;
         case T::Comma: name = "Comma"; break;
+        case T::Dot: name = "Dot"; break;
+        case T::DotDot: name = "DotDot"; break;
+        case T::DotStar: name = "DotStar"; break;
+        case T::DotEqual: name = "DotEqual"; break;
         case T::Lparen: name = "Lparen"; break;
         case T::Rparen: name = "Rparen"; break;
         case T::Lbrace: name = "Lbrace"; break;
