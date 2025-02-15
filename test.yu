@@ -5,14 +5,18 @@ asm func printi(v: int) {
 }
 
 func main() int {
-    var count = 2;
-    var a = []int{14, 15};
+    var count = 4;
+    var a = []int{0, 0, 0, 0};
 
     var i = 0;
     while i < count {
-        var b = a[i];
-        printi(b);
+        a[i] = i;
+        i = i + 1;
+    }
 
+    i = 0;
+    while i < count {
+        printi(a[i]);
         i = i + 1;
     }
 }

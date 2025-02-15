@@ -116,8 +116,8 @@ struct CodegenFunc {
                     break;
                 }
 
-                if (lhs.is_deref()) {
-                    codegen_expr_addr(lhs.first());
+                if (lhs.is_deref() || lhs.is_index()) {
+                    codegen_expr_addr(lhs);
                     codegen_expr(node.second());
                     append_op(node.span, Opcode::Iset);
 
@@ -343,6 +343,24 @@ struct CodegenFunc {
 
             append_op(node.span, Opcode::Get);
             append_idx(node.span, local->slot);
+            return;
+        }
+
+        if (node.is_deref()) {
+            codegen_expr_addr(node.first());
+            return;
+        }
+
+        if (node.is_index()) {
+            auto const& t = node.first().type.inner.at(0);
+
+            codegen_expr(node.first());
+            codegen_expr(node.second());
+
+            append_op(node.second().span, Opcode::Li);
+            append_const(node.second().span, t.bytesize());
+            append_op(node.second().span, Opcode::Mul);
+            append_op(node.second().span, Opcode::Add);
             return;
         }
 

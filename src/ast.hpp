@@ -249,7 +249,8 @@ struct AstNode {
     }
 
     [[nodiscard]] constexpr auto is_lvalue() const -> bool {
-        return kind == AstNodeKind::Id || kind == AstNodeKind::DeRef;
+        return kind == AstNodeKind::Id || kind == AstNodeKind::DeRef ||
+               kind == AstNodeKind::Index;
     }
 
     [[nodiscard]] constexpr auto is_nil() const -> bool {
@@ -263,6 +264,9 @@ struct AstNode {
     }
     [[nodiscard]] constexpr auto is_deref() const -> bool {
         return kind == AstNodeKind::DeRef;
+    }
+    [[nodiscard]] constexpr auto is_index() const -> bool {
+        return kind == AstNodeKind::Index;
     }
     [[nodiscard]] constexpr auto is_func() const -> bool {
         return kind == AstNodeKind::Func;
