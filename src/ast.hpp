@@ -286,6 +286,13 @@ struct AstNode {
     auto add_types(Env& env, ErrorReporter& er) -> Type;
     auto eval_to_type(Env& env, ErrorReporter& er) -> Type;
 
+private:
+    auto add_types_to_func(Env& env, ErrorReporter& er) -> Type;
+    auto add_types_to_asm_func(Env& env, ErrorReporter& er) -> Type;
+    auto add_types_to_var_decl(Env& env, ErrorReporter& er) -> Type;
+    auto add_types_to_array(Env& env, ErrorReporter& er) -> Type;
+    auto add_types_to_call(Env& env, ErrorReporter& er) -> Type;
+
     static constexpr auto escape_string(std::string_view s) -> std::string {
         std::string out;
         while (!s.empty()) {
