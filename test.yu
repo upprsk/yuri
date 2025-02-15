@@ -4,19 +4,15 @@ asm func printi(v: int) {
     "jr $ra"
 }
 
+var g = 420;
+
+func get_g() *int {
+    return &g;
+}
+
 func main() int {
-    var count = 4;
-    var a = []int{0, 0, 0, 0};
+    printi(g);
 
-    var i = 0;
-    while i < count {
-        a[i] = i;
-        i = i + 1;
-    }
-
-    i = 0;
-    while i < count {
-        printi(a[i]);
-        i = i + 1;
-    }
+    (get_g()).* = 10;
+    printi(g);
 }

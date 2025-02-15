@@ -364,7 +364,7 @@ struct CodegenFunc {
             return;
         }
 
-        er->report_bug(node.span, "can't generate address from {}", node);
+        codegen_expr(node);
     }
 
     [[nodiscard]] auto find_function_name(std::string const& name) const
