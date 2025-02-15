@@ -20,6 +20,8 @@ auto fmt::formatter<yuri::TypeKind>::format(yuri::TypeKind  c,
         case T::Bool: name = "Bool"; break;
         case T::Ptr: name = "Ptr"; break;
         case T::Array: name = "Array"; break;
+        case T::Half: name = "Half"; break;
+        case T::Byte: name = "Byte"; break;
     }
 
     // return formatter<string_view>::format(name, ctx);
@@ -41,6 +43,8 @@ auto fmt::formatter<yuri::Type>::format(yuri::Type t, format_context& ctx) const
                                   t.inner.at(t.inner.size() - 1));
         }
         case yuri::TypeKind::Int: return fmt::format_to(ctx.out(), "int");
+        case yuri::TypeKind::Half: return fmt::format_to(ctx.out(), "half");
+        case yuri::TypeKind::Byte: return fmt::format_to(ctx.out(), "byte");
         case yuri::TypeKind::Bool: return fmt::format_to(ctx.out(), "bool");
         case yuri::TypeKind::Ptr:
             return fmt::format_to(ctx.out(), "*{}", t.inner.at(0));

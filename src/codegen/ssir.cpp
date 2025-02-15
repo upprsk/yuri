@@ -120,6 +120,7 @@ struct CodegenFunc {
                     codegen_expr_addr(lhs);
                     codegen_expr(node.second());
                     append_op(node.span, Opcode::Iset);
+                    append_idx(node.span, lhs.type.bytesize());
 
                     break;
                 }
@@ -237,6 +238,7 @@ struct CodegenFunc {
 
                     codegen_expr(item);
                     append_op(item.span, Opcode::Iset);
+                    append_idx(node.span, item.type.bytesize());
                 }
             } break;
 
@@ -292,6 +294,37 @@ struct CodegenFunc {
                 append_op(node.second().span, Opcode::Add);
 
                 append_op(node.span, Opcode::DeRef);
+            } break;
+
+            case AstNodeKind::Cast: {
+                codegen_expr(node.first());
+
+                auto const& lhs = node.first().type;
+                auto const& rhs = node.type;
+
+                if (lhs.is_integral()) {
+                    if (rhs.is_integral()) {
+                        // do nothing
+                    } else {
+                        er->report_error(
+                            node.span, "can't cast {} to non-integral type {}",
+                            lhs, rhs);
+                    }
+
+                } else if (lhs.is_array()) {
+                    if (rhs.is_ptr() && rhs.inner.at(0) == lhs.inner.at(0)) {
+                        // do nothing
+                    } else {
+                        er->report_error(node.span,
+                                         "can't cast {} to {}, inner type must "
+                                         "match: {} not equal to {}",
+                                         lhs, rhs, lhs.inner.at(0),
+                                         rhs.inner.at(0));
+                    }
+                } else {
+                    er->report_error(node.span,
+                                     "can't cast non-integral type {}", lhs);
+                }
             } break;
 
             case AstNodeKind::Call: {
@@ -524,6 +557,7 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, "[{}], {}", idx, v);
                 } break;
 
+                case Opcode::Iset:
                 case Opcode::Alloca: {
                     auto size = func.body.text_at(++i);
                     fmt::println(stderr, ", {}B", size);
@@ -562,7 +596,6 @@ void dump_module(Module const& m) {
                 } break;
 
                 case Opcode::Dupe:
-                case Opcode::Iset:
                 case Opcode::DeRef:
                 case Opcode::Pop:
                 case Opcode::Add:

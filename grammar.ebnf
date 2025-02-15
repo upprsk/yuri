@@ -38,7 +38,8 @@ expr ::= comparison ;
 
 comparison     ::= additive { ("<" | "<=" | ">" | ">=" | "==" | "!=") additive } ;
 additive       ::= multiplicative { ("+" | "-") multiplicative } ;
-multiplicative ::= call { ("*" | "/") call } ;
+multiplicative ::= cast { ("*" | "/") cast } ;
+cast           ::= call { "as" call } ;
 call           ::= primary [ "(" call_args ")" ]
                  | primary "[" expr "]"
                  | primary ".*"

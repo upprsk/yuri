@@ -13,6 +13,8 @@ enum class TypeKind {
     Type,
     Func,
     Int,
+    Half,
+    Byte,
     Bool,
     Ptr,
     Array,
@@ -45,9 +47,9 @@ struct Type {
         return kind == TypeKind::Array;
     }
 
-    // NOTE: remember to add other integer types here in the future
     [[nodiscard]] constexpr auto is_integral() const -> bool {
-        return kind == TypeKind::Int;
+        return kind == TypeKind::Int || kind == TypeKind::Half ||
+               kind == TypeKind::Byte;
     }
 
     [[nodiscard]] constexpr auto bytesize() const -> uint32_t {
@@ -59,6 +61,8 @@ struct Type {
             case TypeKind::Int:
             case TypeKind::Bool:
             case TypeKind::Ptr: return 4;
+            case TypeKind::Half: return 2;
+            case TypeKind::Byte: return 1;
             case TypeKind::Array: return inner.at(0).bytesize() * length;
         }
 
@@ -83,6 +87,12 @@ struct Type {
 
     static auto Int() -> Type {
         return {.kind = TypeKind::Int, .inner = {}, .length = 1};
+    }
+    static auto Half() -> Type {
+        return {.kind = TypeKind::Half, .inner = {}, .length = 1};
+    }
+    static auto Byte() -> Type {
+        return {.kind = TypeKind::Byte, .inner = {}, .length = 1};
     }
     static auto Bool() -> Type {
         return {.kind = TypeKind::Bool, .inner = {}, .length = 1};

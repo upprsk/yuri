@@ -170,6 +170,19 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             return set_type(lhs.inner.at(0));
         }
+        case AstNodeKind::Cast: {
+            auto lhs = children.at(0).add_types(env, er);
+            auto rhs = children.at(1).add_types(env, er);
+
+            if (!rhs.is_type()) {
+                er.report_error(span, "expected type in cast, got {}", rhs);
+                return set_type(Type::Err());
+            }
+
+            auto ty = children.at(1).eval_to_type(env, er);
+
+            return set_type(ty);
+        }
         case AstNodeKind::Call: return add_types_to_call(env, er);
         case AstNodeKind::Ref: {
             if (!children.at(0).is_lvalue()) {
@@ -212,7 +225,8 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
         case AstNodeKind::Err: break;
     }
 
-    throw std::runtime_error(fmt::format("not implemented for {}", *this));
+    er.report_error(span, "not implemented for: {}", *this);
+    return set_type(Type::Err());
 }
 
 auto AstNode::eval_to_type(Env& env, ErrorReporter& er) -> Type {
@@ -468,6 +482,7 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::WhileStmt: name = "WhileStmt"; break;
         case T::Assign: name = "Assign"; break;
         case T::Array: name = "Array"; break;
+        case T::Cast: name = "Cast"; break;
         case T::Add: name = "Add"; break;
         case T::Sub: name = "Sub"; break;
         case T::Mul: name = "Mul"; break;

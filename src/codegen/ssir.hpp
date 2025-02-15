@@ -135,6 +135,7 @@ struct AsmFunc {
 
 struct Global {
     std::string name;
+    Type        type;
     uint64_t    initial_value;
 };
 

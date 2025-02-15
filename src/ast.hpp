@@ -26,6 +26,7 @@ enum class AstNodeKind {
     WhileStmt,
     Assign,
     Array,
+    Cast,
     Add,
     Sub,
     Mul,

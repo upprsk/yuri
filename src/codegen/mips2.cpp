@@ -9,9 +9,7 @@
 #include "fmt/base.h"
 #include "fmt/format.h"
 
-// round to 8bytes
-#define ALIGN_8(addr) ((addr) + (8 - 1)) & -8
-#define ALIGN_4(addr) ((addr) + (4 - 1)) & -4
+#define ALIGN(addr, n) ((addr) + ((n) - 1)) & -(n)
 
 namespace yuri::mips::v2 {
 
@@ -127,6 +125,7 @@ struct CodegenFunc {
                 case ssir::Opcode::SetGlobal:
                 case ssir::Opcode::Get:
                 case ssir::Opcode::Set:
+                case ssir::Opcode::Iset:
                 case ssir::Opcode::B:
                 case ssir::Opcode::Bz: i++; break;
 
@@ -146,20 +145,23 @@ struct CodegenFunc {
             stack_size += word_size;
         }
 
-        // FIXME: diferentiate between simply saving the $sn register and and
-        // actual stack value
         for (auto& l : locals) {
+            // FIXME: use proper alignment, for now using `4` as alignment
+            stack_size = ALIGN(stack_size, l.size);
             l.offset = stack_size;
-            // FIXME: use proper alignment
-            stack_size += ALIGN_4(l.size);
+            stack_size += l.size;
+
+            if (!l.has_addr_taken) l.size = word_size;
         }
 
         for (auto& mr : mregions) {
+            // FIXME: use proper alignment, for now using `4` as alignment
+            stack_size = ALIGN(stack_size, 4);
             mr.offset = stack_size;
-            stack_size += ALIGN_4(mr.size);
+            stack_size += mr.size;
         }
 
-        stack_size = ALIGN_8(stack_size);
+        stack_size = ALIGN(stack_size, 8);
     }
 
     void codegen_body(ssir::Func const& f) {
@@ -198,6 +200,8 @@ struct CodegenFunc {
 
                 case ssir::Opcode::Local: {
                     auto slot = f.body.text_at(++i);
+                    auto sz = f.body.text_at(++i);
+
                     if (slot != locals.at(slot).slot) {
                         er->report_bug(
                             b.span_for(i - 1),
@@ -205,15 +209,20 @@ struct CodegenFunc {
                             locals.at(slot).slot);
                     }
 
-                    auto sz = f.body.text_at(++i);
-
                     auto dst = push_local();
                     auto src = pop_tmp();
 
                     if (locals.at(slot).has_addr_taken) {
+                        if (locals.at(slot).size != sz) {
+                            er->report_bug(f.body.span_for(i - 1),
+                                           "invalid size found, local marked "
+                                           "as {}, but instruction has {}",
+                                           locals.at(slot).size, sz);
+                        }
+
                         // move to memory
-                        // FIXME: use the correct size for the variable
-                        add_op("sw", regs[src],
+                        auto op = op_for_store(locals.at(slot).size);
+                        add_op(op, regs[src],
                                fmt::to_string(locals.at(slot).offset),
                                regs[reg_sp]);
                         break;
@@ -241,16 +250,32 @@ struct CodegenFunc {
                     auto name = f.body.text_at(++i);
                     auto r = push_tmp();
 
-                    // FIXME: use the correct load size
-                    add_op("lw", regs[r], f.body.id_at(name), "$zero");
+                    auto const& global = m->globals.find(f.body.id_at(name));
+                    if (global == m->globals.end()) {
+                        er->report_bug(f.body.span_for(i - 1),
+                                       "undefined global: {}",
+                                       f.body.id_at(name));
+                        break;
+                    }
+
+                    auto op = op_for_load(global->second.type);
+                    add_op(op, regs[r], f.body.id_at(name), "$zero");
                 } break;
 
                 case ssir::Opcode::SetGlobal: {
                     auto name = f.body.text_at(++i);
                     auto r = pop_tmp();
 
-                    // FIXME: use the correct load size
-                    add_op("sw", regs[r], f.body.id_at(name), "$zero");
+                    auto const& global = m->globals.find(f.body.id_at(name));
+                    if (global == m->globals.end()) {
+                        er->report_bug(f.body.span_for(i - 1),
+                                       "undefined global: {}",
+                                       f.body.id_at(name));
+                        break;
+                    }
+
+                    auto op = op_for_store(global->second.type);
+                    add_op(op, regs[r], f.body.id_at(name), "$zero");
                 } break;
 
                 case ssir::Opcode::Get: {
@@ -264,7 +289,8 @@ struct CodegenFunc {
                     auto dst = push_tmp();
                     if (locals.at(slot).has_addr_taken) {
                         // get from memory
-                        add_op("lw", regs[dst],
+                        auto op = op_for_load(locals.at(slot).size);
+                        add_op(op, regs[dst],
                                fmt::to_string(locals.at(slot).offset),
                                regs[reg_sp]);
                         break;
@@ -284,7 +310,8 @@ struct CodegenFunc {
                     auto src = pop_tmp();
                     if (locals.at(slot).has_addr_taken) {
                         // get from memory
-                        add_op("sw", regs[src],
+                        auto op = op_for_store(locals.at(slot).size);
+                        add_op(op, regs[src],
                                fmt::to_string(locals.at(slot).offset),
                                regs[reg_sp]);
                         break;
@@ -294,9 +321,13 @@ struct CodegenFunc {
                 } break;
 
                 case ssir::Opcode::Iset: {
+                    auto size = f.body.text_at(++i);
+
                     auto rhs = pop_tmp();
                     auto lhs = pop_tmp();
-                    add_op("sw", regs[rhs], "", regs[lhs]);
+
+                    auto op = op_for_store(size);
+                    add_op(op, regs[rhs], "", regs[lhs]);
                 } break;
 
                 case ssir::Opcode::Add: binop("addu"); break;
@@ -341,7 +372,7 @@ struct CodegenFunc {
                 } break;
 
                 case ssir::Opcode::Alloca: {
-                    auto size = f.body.text_at(++i);
+                    auto _ = f.body.text_at(++i);
                     auto idx = alloca++;
                     auto r = push_tmp();
                     add_op("addiu", regs[r], regs[reg_sp],
@@ -352,8 +383,10 @@ struct CodegenFunc {
                     auto ptr = pop_tmp();
                     auto r = push_tmp();
 
-                    // FIXME: use proper sizes
-                    add_op("lw", regs[r], "", regs[ptr]);
+                    // FIXME: add sizes
+                    auto size = 4;
+                    auto op = op_for_load(size);
+                    add_op(op, regs[r], "", regs[ptr]);
                 } break;
 
                 case ssir::Opcode::Call: {
@@ -409,7 +442,8 @@ struct CodegenFunc {
             // for it.
             if (local.has_addr_taken) continue;
 
-            add_op("sw", regs[reg_loc_base + i], fmt::to_string(local.offset),
+            auto op = op_for_store(local.size);
+            add_op(op, regs[reg_loc_base + i], fmt::to_string(local.offset),
                    regs[reg_sp]);
 
             if (i < argc) {
@@ -432,7 +466,8 @@ struct CodegenFunc {
 
         size_t i{};
         for (auto const& local : locals) {
-            add_op("lw", regs[reg_loc_base + i], fmt::to_string(local.offset),
+            auto op = op_for_load(local.size);
+            add_op(op, regs[reg_loc_base + i], fmt::to_string(local.offset),
                    regs[reg_sp]);
 
             i++;
@@ -658,7 +693,8 @@ struct CodegenFunc {
         fmt::println("{}:", f.name);
 
         for (auto const& op : output) {
-            if (op.op == "lw" || op.op == "sw") {
+            if (op.op == "lw" || op.op == "lh" || op.op == "lb" ||
+                op.op == "sw" || op.op == "sh" || op.op == "sb") {
                 fmt::println("    {} {}, {}({})", op.op, op.r, op.a, op.b);
             } else if (op.op == "addu" || op.op == "subu" || op.op == "mul" ||
                        op.op == "div" || op.op == "sne" || op.op == "seq" ||
@@ -687,6 +723,47 @@ struct CodegenFunc {
 
     // ----------------------------------------------------------------------------
 
+    [[nodiscard]] constexpr auto op_for_store(Type const& t) const
+        -> std::string_view {
+        return op_for_store(t.bytesize());
+    }
+
+    [[nodiscard]] constexpr auto op_for_store(size_t size) const
+        -> std::string_view {
+        std::string_view op;
+        switch (size) {
+            case 1: op = "sb"; break;
+            case 2: op = "sh"; break;
+            case 4: op = "sw"; break;
+            default:
+                er->report_bug({}, "invalid type size for store: {}", size);
+                break;
+        }
+
+        return op;
+    }
+
+    [[nodiscard]] constexpr auto op_for_load(Type const& t) const
+        -> std::string_view {
+        return op_for_load(t.bytesize());
+    }
+
+    [[nodiscard]] constexpr auto op_for_load(size_t size) const
+        -> std::string_view {
+        // FIXME: handle signed/unsigned
+        std::string_view op;
+        switch (size) {
+            case 1: op = "lb"; break;
+            case 2: op = "lh"; break;
+            case 4: op = "lw"; break;
+            default:
+                er->report_bug({}, "invalid type size load: {}", size);
+                break;
+        }
+
+        return op;
+    }
+
     // ----------------------------------------------------------------------------
 
     void add_op(std::string_view op, std::string_view r,
@@ -701,7 +778,8 @@ struct CodegenFunc {
     constexpr auto push_local() -> size_t { return locals_top++; }
     constexpr auto pop_local() -> size_t { return --locals_top; }
 
-    ErrorReporter* er;
+    ErrorReporter*      er;
+    ssir::Module const* m;
 
     std::vector<Op>         output;
     std::vector<Local>      locals;
@@ -745,16 +823,16 @@ struct Codegen {
         }
 
         for (auto const& [name, f] : m.entries) {
-            codegen_func(f);
+            codegen_func(m, f);
         }
     }
 
-    void codegen_func(ssir::Func const& f) {
+    void codegen_func(ssir::Module const& m, ssir::Func const& f) {
         fmt::println(
             "# --------------------------------------------------------------");
 
-        auto c =
-            CodegenFunc{.er = er, .output = {}, .locals = {}, .mregions = {}};
+        auto c = CodegenFunc{
+            .er = er, .m = &m, .output = {}, .locals = {}, .mregions = {}};
         c.codegen(f, true);
     }
 

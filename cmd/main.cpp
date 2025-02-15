@@ -53,6 +53,8 @@ auto main(int argc, char** argv) -> int {
 
         yuri::Env env;
         env.define("int", yuri::Type::make_type(), yuri::Type::Int());
+        env.define("half", yuri::Type::make_type(), yuri::Type::Half());
+        env.define("byte", yuri::Type::make_type(), yuri::Type::Byte());
         env.define("bool", yuri::Type::make_type(), yuri::Type::Bool());
         env.define("void", yuri::Type::make_type(), yuri::Type::Void());
 

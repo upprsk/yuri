@@ -394,7 +394,7 @@ struct Parser {
     }
 
     auto parse_multiplicative() -> AstNode {
-        auto left = parse_call();
+        auto left = parse_cast();
 
         while (true) {
             auto        t = peek();
@@ -407,7 +407,28 @@ struct Parser {
                 break;
 
             advance();
-            AstNode right = parse_call();
+            AstNode right = parse_cast();
+
+            left = AstNode::Binary(left.span.extend(right.span), kind, left,
+                                   right);
+        }
+
+        return left;
+    }
+
+    auto parse_cast() -> AstNode {
+        auto left = parse_call();
+
+        while (true) {
+            auto        t = peek();
+            AstNodeKind kind;
+            if (t.is_kw(source, "as")) {
+                kind = AstNodeKind::Cast;
+            } else
+                break;
+
+            advance();
+            auto right = parse_call();
 
             left = AstNode::Binary(left.span.extend(right.span), kind, left,
                                    right);
