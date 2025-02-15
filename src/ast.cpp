@@ -343,6 +343,11 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             return set_type(*type);
         }
+        case AstNodeKind::Ptr: {
+            auto r = children.at(0).add_types(env, er);
+
+            return set_type(Type::make_type());
+        }
         case AstNodeKind::Int: {
             return set_type(Type::Int());
         }
@@ -363,6 +368,10 @@ auto AstNode::eval_to_type(Env& env, ErrorReporter& er) -> Type {
             }
 
             return *type;
+        }
+        case AstNodeKind::Ptr: {
+            auto const inner = children.at(0).eval_to_type(env, er);
+            return Type::Ptr(inner);
         }
         default: {
             er.report_error(span, "can't evaluate to a type");
@@ -405,6 +414,7 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::Call: name = "Call"; break;
         case T::Ref: name = "Ref"; break;
         case T::DeRef: name = "DeRef"; break;
+        case T::Ptr: name = "Ptr"; break;
         case T::Id: name = "Id"; break;
         case T::Int: name = "Int"; break;
         case T::Str: name = "Str"; break;

@@ -38,6 +38,7 @@ enum class AstNodeKind {
     Call,
     Ref,
     DeRef,
+    Ptr,
     Id,
     Int,
     Str,

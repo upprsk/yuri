@@ -484,6 +484,12 @@ struct Parser {
                                   child);
         }
 
+        if (t.type == TokenType::Star) {
+            auto child = parse_expr();
+            return AstNode::Unary(t.span.extend(child.span), AstNodeKind::Ptr,
+                                  child);
+        }
+
         er->report_error(t.span,
                          "invalid syntax, expected expression, found {}",
                          t.span.str(source));

@@ -50,6 +50,7 @@ primary ::= ID
           | STR
           | "&" expr
           | "(" expr ")"
+          | "*" expr
           ;
 
 (* terminals *)
