@@ -520,6 +520,24 @@ struct CodegenFunc {
 
 struct Codegen {
     void codegen(ssir::Module const& m) {
+        fmt::println(".set noreorder");
+        fmt::println("");
+        fmt::println(".data");
+
+        for (auto const& [k, v] : m.globals) {
+            // FIXME: use the right size for the variable
+            fmt::println("{}: .word {}", v.name, v.initial_value);
+        }
+
+        fmt::println("");
+        fmt::println(".text");
+        fmt::println(".global _start");
+        fmt::println("_start:");
+        fmt::println("    jal main");
+        fmt::println("    move $a0, $v0");
+        fmt::println("    li $v0, 17");
+        fmt::println("    syscall");
+
         for (auto const& [name, f] : m.asm_entries) {
             fmt::println("");
             fmt::println("# {}", f.type);
