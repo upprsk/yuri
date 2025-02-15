@@ -343,8 +343,6 @@ struct CodegenFunc {
     }
 
     void codegen_pramble(ssir::Func const& f) {
-        // add_op("", f.name);
-
         add_op("subu", regs[reg_sp], regs[reg_sp], fmt::to_string(stack_size));
 
         auto argc = f.type.inner.size() - 1;
@@ -369,6 +367,8 @@ struct CodegenFunc {
 
             i++;
         }
+
+        add_op("#", "end of preamble");
     }
 
     void codegen_postamble(ssir::Func const& f) {
@@ -614,6 +614,8 @@ struct CodegenFunc {
                 fmt::println("    {}:", op.r);
             } else if (op.op == "") {
                 fmt::println("{}:", op.r);
+            } else if (op.op == "#") {
+                fmt::println("    # {}", op.r);
             } else {
                 fmt::println("# op='{}', r='{}', a='{}', b='{}'", op.op, op.r,
                              op.a, op.b);
