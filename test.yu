@@ -10,11 +10,15 @@ asm func readi() int {
     "jr $ra"
 }
 
+var global = 1024;
+
+func a() {
+    global = global + 1;
+}
+
 func main() int {
-    var input = readi();
-    if input < 18 {
-        printi(0);
-    } else {
-        printi(42);
-    }
+    a();
+
+    global = global + 1;
+    printi(global);
 }

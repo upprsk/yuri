@@ -18,6 +18,8 @@ enum class Opcode : uint8_t {
     Local,
     Li,
     Pop,
+    GetGlobal,
+    SetGlobal,
     Get,
     Set,
     Add,
@@ -123,9 +125,15 @@ struct AsmFunc {
     std::vector<std::string> body;
 };
 
+struct Global {
+    std::string name;
+    uint64_t    initial_value;
+};
+
 struct Module {
     std::unordered_map<std::string, Func>    entries;
     std::unordered_map<std::string, AsmFunc> asm_entries;
+    std::unordered_map<std::string, Global>  globals;
 };
 
 auto codegen(AstNode const& ast, ErrorReporter& er) -> Module;

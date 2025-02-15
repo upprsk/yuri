@@ -83,6 +83,7 @@ struct CodegenFunc {
             } break;
 
             case AstNodeKind::VarDecl:
+                // TODO: type coercion
                 codegen_expr(node.second());
                 append_op(node.span, Opcode::Local);
                 append_idx(node.span, node.type.bytesize());
@@ -99,14 +100,21 @@ struct CodegenFunc {
                     return;
                 }
 
+                codegen_expr(node.second());
+
                 auto local = find_local(lhs.value_string());
                 if (!local) {
-                    er->report_bug(lhs.span, "undefined identifier: '{}'",
-                                   lhs.value_string());
-                    return;
-                }
+                    auto global = find_global(lhs.value_string());
+                    if (!global) {
+                        er->report_bug(lhs.span, "undefined identifier: '{}'",
+                                       lhs.value_string());
+                        return;
+                    }
 
-                codegen_expr(node.second());
+                    append_op(lhs.span, Opcode::SetGlobal);
+                    append_id(lhs.span, global->name);
+                    break;
+                }
 
                 append_op(lhs.span, Opcode::Set);
                 append_idx(node.span, local->slot);
@@ -186,9 +194,16 @@ struct CodegenFunc {
             case AstNodeKind::Id: {
                 auto local = find_local(node.value_string());
                 if (!local) {
-                    er->report_bug(node.span, "undefined identifier: '{}'",
-                                   node.value_string());
-                    return;
+                    auto global = find_global(node.value_string());
+                    if (!global) {
+                        er->report_bug(node.span, "undefined identifier: '{}'",
+                                       node.value_string());
+                        return;
+                    }
+
+                    append_op(node.span, Opcode::GetGlobal);
+                    append_id(node.span, global->name);
+                    break;
                 }
 
                 append_op(node.span, Opcode::Get);
@@ -266,6 +281,13 @@ struct CodegenFunc {
         return nullptr;
     }
 
+    [[nodiscard]] auto find_global(std::string const& name) const -> Global* {
+        auto it = m->globals.find(name);
+        if (it == m->globals.end()) return nullptr;
+
+        return &it->second;
+    }
+
     void append_op(Span s, Opcode op) {
         f.body.append_op(op);
         f.body.append_span(s);
@@ -337,6 +359,18 @@ struct Codegen {
                     .type = decl.type,
                     .body = body,
                 };
+            } else if (decl.kind == AstNodeKind::VarDecl) {
+                auto init = decl.second();
+                if (init.kind != AstNodeKind::Int) {
+                    er->report_error(
+                        decl.span,
+                        "globals can only be initialized to integer constants");
+                    return;
+                }
+
+                m.globals[decl.value_string()] = {
+                    .name = decl.value_string(),
+                    .initial_value = init.value_int()};
             } else {
                 er->report_bug(decl.span, "unexpected node in top-level: {}",
                                decl);
@@ -378,11 +412,13 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, "[{}], {}", idx, v);
                 } break;
 
-                case Opcode::Get: {
-                    auto slot = func.body.text_at(++i);
-                    fmt::println(stderr, ", {}", slot);
+                case Opcode::GetGlobal:
+                case Opcode::SetGlobal: {
+                    auto name = func.body.text_at(++i);
+                    fmt::println(stderr, ", {}", func.body.id_at(name));
                 } break;
 
+                case Opcode::Get:
                 case Opcode::Set: {
                     auto slot = func.body.text_at(++i);
                     fmt::println(stderr, ", {}", slot);
@@ -440,6 +476,8 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::Local: name = "Local"; break;
         case yuri::ssir::Opcode::Li: name = "Li"; break;
         case yuri::ssir::Opcode::Pop: name = "Pop"; break;
+        case yuri::ssir::Opcode::GetGlobal: name = "GetGlobal"; break;
+        case yuri::ssir::Opcode::SetGlobal: name = "SetGlobal"; break;
         case yuri::ssir::Opcode::Get: name = "Get"; break;
         case yuri::ssir::Opcode::Set: name = "Set"; break;
         case yuri::ssir::Opcode::Add: name = "Add"; break;

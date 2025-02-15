@@ -88,6 +88,8 @@ struct CodegenFunc {
                     locals.push_back(l);
                 } break;
                 case ssir::Opcode::Li:
+                case ssir::Opcode::GetGlobal:
+                case ssir::Opcode::SetGlobal:
                 case ssir::Opcode::Get:
                 case ssir::Opcode::Set:
                 case ssir::Opcode::B:
@@ -156,6 +158,22 @@ struct CodegenFunc {
                     auto dst = push_tmp();
 
                     add_op("li", regs[dst], fmt::to_string(v));
+                } break;
+
+                case ssir::Opcode::GetGlobal: {
+                    auto name = f.body.text_at(++i);
+                    auto r = push_tmp();
+
+                    // FIXME: use the correct load size
+                    add_op("lw", regs[r], f.body.id_at(name), "$zero");
+                } break;
+
+                case ssir::Opcode::SetGlobal: {
+                    auto name = f.body.text_at(++i);
+                    auto r = pop_tmp();
+
+                    // FIXME: use the correct load size
+                    add_op("sw", regs[r], f.body.id_at(name), "$zero");
                 } break;
 
                 case ssir::Opcode::Get: {
@@ -532,6 +550,14 @@ void codegen_stdout(ssir::Module const& m, ErrorReporter& er) {
     auto c = Codegen{.er = &er};
 
     fmt::println(".set noreorder");
+    fmt::println("");
+    fmt::println(".data");
+
+    for (auto const& [k, v] : m.globals) {
+        // FIXME: use the right size for the variable
+        fmt::println("{}: .word {}", v.name, v.initial_value);
+    }
+
     fmt::println("");
     fmt::println(".text");
     fmt::println(".global _start");
