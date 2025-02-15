@@ -31,6 +31,8 @@ struct Parser {
     }
 
     constexpr void advance() {
+        if (is_at_end()) return;
+
         do {
             current++;
         } while (peek().is_comment());
