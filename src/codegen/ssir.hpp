@@ -20,6 +20,7 @@ enum class Opcode : uint8_t {
     Pop,
     Ref,
     DeRef,
+    Global,
     GetGlobal,
     SetGlobal,
     Get,

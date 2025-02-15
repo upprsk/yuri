@@ -8,8 +8,9 @@ func inc(v: *int, i: int) {
     v.* = v.* + i;
 }
 
+var global = 4;
+
 func main() int {
-    var a = 2;
-    inc(&a, 2);
-    print_int(a);
+    inc(&global, 2);
+    print_int(global);
 }

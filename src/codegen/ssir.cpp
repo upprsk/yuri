@@ -234,10 +234,18 @@ struct CodegenFunc {
 
                 auto local = find_local(node.first().value_string());
                 if (!local) {
-                    er->report_bug(node.first().span,
-                                   "undefined identifier: '{}'",
-                                   node.first().value_string());
-                    return;
+                    auto global = find_global(node.first().value_string());
+                    if (!global) {
+                        er->report_bug(node.first().span,
+                                       "undefined identifier: '{}'",
+                                       node.first().value_string());
+                        return;
+                    }
+
+                    append_op(node.span, Opcode::Global);
+                    append_id(node.span, global->name);
+
+                    break;
                 }
 
                 append_op(node.span, Opcode::Ref);
@@ -461,6 +469,7 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, "[{}], {}", idx, v);
                 } break;
 
+                case Opcode::Global:
                 case Opcode::GetGlobal:
                 case Opcode::SetGlobal: {
                     auto name = func.body.text_at(++i);
@@ -531,6 +540,7 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::Pop: name = "Pop"; break;
         case yuri::ssir::Opcode::Ref: name = "Ref"; break;
         case yuri::ssir::Opcode::DeRef: name = "DeRef"; break;
+        case yuri::ssir::Opcode::Global: name = "Global"; break;
         case yuri::ssir::Opcode::GetGlobal: name = "GetGlobal"; break;
         case yuri::ssir::Opcode::SetGlobal: name = "SetGlobal"; break;
         case yuri::ssir::Opcode::Get: name = "Get"; break;

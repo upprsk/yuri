@@ -112,6 +112,7 @@ struct CodegenFunc {
                 } break;
 
                 case ssir::Opcode::Li:
+                case ssir::Opcode::Global:
                 case ssir::Opcode::GetGlobal:
                 case ssir::Opcode::SetGlobal:
                 case ssir::Opcode::Get:
@@ -201,6 +202,13 @@ struct CodegenFunc {
                     auto dst = push_tmp();
 
                     add_op("li", regs[dst], fmt::to_string(v));
+                } break;
+
+                case ssir::Opcode::Global: {
+                    auto name = f.body.text_at(++i);
+                    auto r = push_tmp();
+
+                    add_op("la", regs[r], f.body.id_at(name));
                 } break;
 
                 case ssir::Opcode::GetGlobal: {
@@ -612,7 +620,7 @@ struct CodegenFunc {
                        op.op == "ble" || op.op == "bgt" || op.op == "bge" ||
                        op.op == "addiu" || op.op == "subiu") {
                 fmt::println("    {} {}, {}, {}", op.op, op.r, op.a, op.b);
-            } else if (op.op == "move" || op.op == "li") {
+            } else if (op.op == "move" || op.op == "li" || op.op == "la") {
                 fmt::println("    {} {}, {}", op.op, op.r, op.a);
             } else if (op.op == "jr" || op.op == "jal" || op.op == "b") {
                 fmt::println("    {} {}", op.op, op.r);
