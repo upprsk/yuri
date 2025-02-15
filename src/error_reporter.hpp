@@ -53,7 +53,8 @@ private:
         uint32_t col{};
         uint32_t row{};
 
-        for (size_t i = 0; i < s.begin; i++, col++) {
+        auto count = std::min(s.begin, static_cast<uint32_t>(source.size()));
+        for (size_t i = 0; i < count; i++, col++) {
             if (source.at(i) == '\n') {
                 row++;
                 col = 0;
