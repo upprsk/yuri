@@ -451,6 +451,26 @@ struct Parser {
         return args;
     }
 
+    auto parse_array() -> AstNode {
+        auto start = peek_prev();
+        // try_consume(TokenType::Lbracket, prev_span(), "expected '['");
+
+        AstNode n = AstNode::Nil();
+        if (peek().type != TokenType::Rbracket) n = parse_expr();
+
+        try_consume(TokenType::Rbracket, prev_span(), "expected ']'");
+
+        auto ty = parse_expr();
+        try_consume(TokenType::Lbrace, prev_span(), "expected '{'");
+
+        // it is the same logic, so we can reuse the `parse_call_args` function.
+        auto items = parse_call_args();
+
+        try_consume(TokenType::Rbrace, prev_span(), "expected '}'");
+
+        return AstNode::Array(start.span.extend(prev_span()), n, ty, items);
+    }
+
     auto parse_primary() -> AstNode {
         auto t = peek_and_advance();
         if (t.type == TokenType::Id) {
@@ -489,6 +509,8 @@ struct Parser {
             return AstNode::Unary(t.span.extend(child.span), AstNodeKind::Ptr,
                                   child);
         }
+
+        if (t.type == TokenType::Lbracket) return parse_array();
 
         er->report_error(t.span,
                          "invalid syntax, expected expression, found {}",

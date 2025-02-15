@@ -43,6 +43,8 @@ auto fmt::formatter<yuri::Type>::format(yuri::Type t, format_context& ctx) const
         case yuri::TypeKind::Bool: return fmt::format_to(ctx.out(), "bool");
         case yuri::TypeKind::Ptr:
             return fmt::format_to(ctx.out(), "*{}", t.inner.at(0));
+        case yuri::TypeKind::Array:
+            return fmt::format_to(ctx.out(), "[{}]{}", t.length, t.inner.at(0));
     }
 
     return fmt::format_to(ctx.out(), "{{{}, {}}}", t.kind, t.inner);

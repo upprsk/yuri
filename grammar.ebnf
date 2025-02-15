@@ -43,11 +43,14 @@ call           ::= primary [ "(" call_args ")" ]
                  | primary ".*"
                  ;
 
-call_args ::= expr [ "," call_args ] ;
+call_args   ::= expr [ "," call_args ] ;
+array       ::= "[" expr "]" expr "{" array_items "}" ;
+array_items ::= expr [ "," array_items ] ;
 
 primary ::= ID
           | INT
           | STR
+          | array
           | "&" expr
           | "(" expr ")"
           | "*" expr

@@ -25,6 +25,7 @@ enum class AstNodeKind {
     IfStmt,
     WhileStmt,
     Assign,
+    Array,
     Add,
     Sub,
     Mul,
@@ -137,6 +138,19 @@ struct AstNode {
         };
     }
 
+    static auto Array(Span span, AstNode const& n, AstNode const& ty,
+                      std::vector<AstNode> const& items) -> AstNode {
+        std::vector children{n, ty};
+        for (auto const& n : items) children.push_back(n);
+
+        return {
+            .value = {},
+            .children = children,
+            .span = span,
+            .kind = AstNodeKind::Array,
+        };
+    }
+
     static auto Unary(Span span, AstNodeKind kind, AstNode const& child)
         -> AstNode {
         return {
@@ -242,6 +256,9 @@ struct AstNode {
     }
     [[nodiscard]] constexpr auto is_id() const -> bool {
         return kind == AstNodeKind::Id;
+    }
+    [[nodiscard]] constexpr auto is_int() const -> bool {
+        return kind == AstNodeKind::Int;
     }
     [[nodiscard]] constexpr auto is_deref() const -> bool {
         return kind == AstNodeKind::DeRef;

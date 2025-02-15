@@ -244,6 +244,61 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             return set_type(Type::Void());
         }
+        case AstNodeKind::Array: {
+            auto ty_node = children.at(1).add_types(env, er);
+            if (!ty_node.is_type()) {
+                er.report_error(children.at(1).span,
+                                "expected type of array, but found {}",
+                                ty_node);
+                // FIXME: use an array type here
+                return set_type(Type::Err());
+            }
+
+            auto ty = children.at(1).eval_to_type(env, er);
+
+            std::span items = children;
+            items = items.subspan(2);
+
+            size_t count{};
+            if (!children.at(0).is_nil()) {
+                auto n = children.at(0).add_types(env, er);
+                if (!n.is_integral()) {
+                    er.report_error(
+                        children.at(0).span,
+                        "explicit size of array must be an integer, found {}",
+                        n);
+                }
+
+                if (children.at(0).is_int()) {
+                    count = children.at(0).value_int();
+                } else {
+                    er.report_error(children.at(0).span,
+                                    "the compiler is limited, use an integer "
+                                    "here or auto-detect");
+                }
+            } else {
+                count = items.size();
+            }
+
+            if (count < items.size()) {
+                er.report_error(
+                    span,
+                    "array can hava at most {} items, found {} in initializer",
+                    count, items.size());
+            }
+
+            for (auto& item : items) {
+                auto item_type = item.add_types(env, er);
+                if (ty != item_type) {
+                    er.report_error(
+                        item.span,
+                        "expected {}, but found {} in array initialization", ty,
+                        item_type);
+                }
+            }
+
+            return set_type(Type::Array(ty, count));
+        }
         case AstNodeKind::Add:
         case AstNodeKind::Sub:
         case AstNodeKind::Mul:
@@ -401,6 +456,7 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::IfStmt: name = "IfStmt"; break;
         case T::WhileStmt: name = "WhileStmt"; break;
         case T::Assign: name = "Assign"; break;
+        case T::Array: name = "Array"; break;
         case T::Add: name = "Add"; break;
         case T::Sub: name = "Sub"; break;
         case T::Mul: name = "Mul"; break;

@@ -15,11 +15,13 @@ enum class TypeKind {
     Int,
     Bool,
     Ptr,
+    Array,
 };
 
 struct Type {
     TypeKind          kind;
     std::vector<Type> inner;
+    size_t            length;
 
     [[nodiscard]] constexpr auto is_err() const -> bool {
         return kind == TypeKind::Err;
@@ -54,6 +56,7 @@ struct Type {
             case TypeKind::Int:
             case TypeKind::Bool:
             case TypeKind::Ptr: return 4;
+            case TypeKind::Array: return inner.at(0).bytesize() * length;
         }
 
         return 0;
@@ -63,24 +66,35 @@ struct Type {
         return kind == o.kind && inner == o.inner;
     }
 
-    static auto Void() -> Type { return {.kind = TypeKind::Void, .inner = {}}; }
+    static auto Void() -> Type {
+        return {.kind = TypeKind::Void, .inner = {}, .length = 0};
+    }
 
     static auto Func(std::vector<Type> const& args, Type const& return_type)
         -> Type {
         auto inner = args;
         inner.push_back(return_type);
 
-        return {.kind = TypeKind::Func, .inner = inner};
+        return {.kind = TypeKind::Func, .inner = inner, .length = 1};
     }
 
-    static auto Int() -> Type { return {.kind = TypeKind::Int, .inner = {}}; }
-    static auto Bool() -> Type { return {.kind = TypeKind::Bool, .inner = {}}; }
-    static auto Ptr(Type const& t) -> Type {
-        return {.kind = TypeKind::Ptr, .inner = {t}};
+    static auto Int() -> Type {
+        return {.kind = TypeKind::Int, .inner = {}, .length = 1};
     }
-    static auto Err() -> Type { return {.kind = TypeKind::Err, .inner = {}}; }
+    static auto Bool() -> Type {
+        return {.kind = TypeKind::Bool, .inner = {}, .length = 1};
+    }
+    static auto Ptr(Type const& t) -> Type {
+        return {.kind = TypeKind::Ptr, .inner = {t}, .length = 1};
+    }
+    static auto Array(Type const& t, size_t length) -> Type {
+        return {.kind = TypeKind::Array, .inner = {t}, .length = length};
+    }
+    static auto Err() -> Type {
+        return {.kind = TypeKind::Err, .inner = {}, .length = 1};
+    }
     static auto make_type() -> Type {
-        return {.kind = TypeKind::Type, .inner = {}};
+        return {.kind = TypeKind::Type, .inner = {}, .length = 1};
     }
 };
 
