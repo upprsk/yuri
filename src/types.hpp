@@ -14,6 +14,7 @@ enum class TypeKind {
     Func,
     Int,
     Bool,
+    Ptr,
 };
 
 struct Type {
@@ -35,6 +36,9 @@ struct Type {
     [[nodiscard]] constexpr auto is_func() const -> bool {
         return kind == TypeKind::Func;
     }
+    [[nodiscard]] constexpr auto is_ptr() const -> bool {
+        return kind == TypeKind::Ptr;
+    }
 
     // NOTE: remember to add other integer types here in the future
     [[nodiscard]] constexpr auto is_integral() const -> bool {
@@ -48,7 +52,8 @@ struct Type {
             case TypeKind::Type:
             case TypeKind::Func: return 0;
             case TypeKind::Int:
-            case TypeKind::Bool: return 4;
+            case TypeKind::Bool:
+            case TypeKind::Ptr: return 4;
         }
 
         return 0;
@@ -70,6 +75,9 @@ struct Type {
 
     static auto Int() -> Type { return {.kind = TypeKind::Int, .inner = {}}; }
     static auto Bool() -> Type { return {.kind = TypeKind::Bool, .inner = {}}; }
+    static auto Ptr(Type const& t) -> Type {
+        return {.kind = TypeKind::Ptr, .inner = {t}};
+    }
     static auto Err() -> Type { return {.kind = TypeKind::Err, .inner = {}}; }
     static auto make_type() -> Type {
         return {.kind = TypeKind::Type, .inner = {}};

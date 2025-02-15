@@ -1,4 +1,11 @@
+asm func print_int(_: int) {
+    "li $v0 1"
+    "syscall"
+    "jr $ra"
+}
+
 func main() int {
     var a = 12;
     var b = &a;
+    print_int(b.*);
 }

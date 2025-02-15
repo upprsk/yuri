@@ -313,6 +313,26 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             return set_type(callee.inner.at(callee.inner.size() - 1));
         }
+        case AstNodeKind::Ref: {
+            if (!children.at(0).is_lvalue()) {
+                er.report_error(span, "can't take address of non l-value: {}",
+                                children.at(0).kind);
+                return set_type(Type::Err());
+            }
+
+            auto inner = children.at(0).add_types(env, er);
+            return set_type(Type::Ptr(inner));
+        } break;
+        case AstNodeKind::DeRef: {
+            auto inner = children.at(0).add_types(env, er);
+            if (!inner.is_ptr()) {
+                er.report_error(span, "can't de-reference non-pointer {}",
+                                inner);
+                return set_type(Type::Err());
+            }
+
+            return set_type(inner.inner.at(0));
+        } break;
         case AstNodeKind::Id: {
             auto const& name = std::get<std::string>(value);
             auto        type = env.lookup(name);
@@ -383,6 +403,8 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::Equal: name = "Equal"; break;
         case T::NotEqual: name = "NotEqual"; break;
         case T::Call: name = "Call"; break;
+        case T::Ref: name = "Ref"; break;
+        case T::DeRef: name = "DeRef"; break;
         case T::Id: name = "Id"; break;
         case T::Int: name = "Int"; break;
         case T::Str: name = "Str"; break;

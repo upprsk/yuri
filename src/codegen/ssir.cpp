@@ -86,6 +86,7 @@ struct CodegenFunc {
                 // TODO: type coercion
                 codegen_expr(node.second());
                 append_op(node.span, Opcode::Local);
+                append_idx(node.span, locals.size());
                 append_idx(node.span, node.type.bytesize());
                 add_local(node.value_string(), node.type.bytesize());
                 break;
@@ -216,6 +217,29 @@ struct CodegenFunc {
             case AstNodeKind::GreaterThan: binop(Opcode::Sgt); break;
             case AstNodeKind::Equal: binop(Opcode::Seq); break;
             case AstNodeKind::NotEqual: binop(Opcode::Sne); break;
+
+            case AstNodeKind::Ref: {
+                if (!node.first().is_id()) {
+                    er->report_bug(node.span, "child is not an id");
+                    return;
+                }
+
+                auto local = find_local(node.first().value_string());
+                if (!local) {
+                    er->report_bug(node.first().span,
+                                   "undefined identifier: '{}'",
+                                   node.first().value_string());
+                    return;
+                }
+
+                append_op(node.span, Opcode::Ref);
+                append_idx(node.span, local->slot);
+            } break;
+
+            case AstNodeKind::DeRef: {
+                codegen_expr(node.first());
+                append_op(node.span, Opcode::DeRef);
+            } break;
 
             case AstNodeKind::Call: {
                 std::span args = node.children;
@@ -418,6 +442,7 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, ", {}", func.body.id_at(name));
                 } break;
 
+                case Opcode::Ref:
                 case Opcode::Get:
                 case Opcode::Set: {
                     auto slot = func.body.text_at(++i);
@@ -425,8 +450,9 @@ void dump_module(Module const& m) {
                 } break;
 
                 case Opcode::Local: {
+                    auto slot = func.body.text_at(++i);
                     auto sz = func.body.text_at(++i);
-                    fmt::println(stderr, ", {}B", sz);
+                    fmt::println(stderr, ", {}, {}B", slot, sz);
                 } break;
 
                 case Opcode::B:
@@ -441,6 +467,7 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, ", {}, {}", func.body.id_at(id), argc);
                 } break;
 
+                case Opcode::DeRef:
                 case Opcode::Pop:
                 case Opcode::Add:
                 case Opcode::Sub:
@@ -476,6 +503,8 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::Local: name = "Local"; break;
         case yuri::ssir::Opcode::Li: name = "Li"; break;
         case yuri::ssir::Opcode::Pop: name = "Pop"; break;
+        case yuri::ssir::Opcode::Ref: name = "Ref"; break;
+        case yuri::ssir::Opcode::DeRef: name = "DeRef"; break;
         case yuri::ssir::Opcode::GetGlobal: name = "GetGlobal"; break;
         case yuri::ssir::Opcode::SetGlobal: name = "SetGlobal"; break;
         case yuri::ssir::Opcode::Get: name = "Get"; break;

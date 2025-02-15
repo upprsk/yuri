@@ -419,7 +419,14 @@ struct Parser {
     auto parse_call() -> AstNode {
         auto expr = parse_primary();
 
-        if (peek().type != TokenType::Lparen) return expr;
+        auto t = peek();
+        if (t.type == TokenType::DotStar) {
+            advance();
+            return AstNode::Unary(expr.span.extend(t.span), AstNodeKind::DeRef,
+                                  expr);
+        }
+
+        if (t.type != TokenType::Lparen) return expr;
         advance();
 
         std::vector<AstNode> args;
@@ -469,6 +476,12 @@ struct Parser {
 
         if (t.type == TokenType::Str) {
             return AstNode::Str(t.span, std::string{t.span.str(source)});
+        }
+
+        if (t.type == TokenType::Ampersand) {
+            auto child = parse_expr();
+            return AstNode::Unary(t.span.extend(child.span), AstNodeKind::Ref,
+                                  child);
         }
 
         er->report_error(t.span,

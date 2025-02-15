@@ -18,6 +18,7 @@ auto fmt::formatter<yuri::TypeKind>::format(yuri::TypeKind  c,
         case T::Func: name = "Func"; break;
         case T::Int: name = "Int"; break;
         case T::Bool: name = "Bool"; break;
+        case T::Ptr: name = "Ptr"; break;
     }
 
     // return formatter<string_view>::format(name, ctx);
@@ -40,6 +41,8 @@ auto fmt::formatter<yuri::Type>::format(yuri::Type t, format_context& ctx) const
         }
         case yuri::TypeKind::Int: return fmt::format_to(ctx.out(), "int");
         case yuri::TypeKind::Bool: return fmt::format_to(ctx.out(), "bool");
+        case yuri::TypeKind::Ptr:
+            return fmt::format_to(ctx.out(), "*{}", t.inner.at(0));
     }
 
     return fmt::format_to(ctx.out(), "{{{}, {}}}", t.kind, t.inner);

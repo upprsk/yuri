@@ -39,13 +39,16 @@ expr ::= comparison ;
 comparison     ::= additive { ("<" | "<=" | ">" | ">=" | "==" | "!=") additive } ;
 additive       ::= multiplicative { ("+" | "-") multiplicative } ;
 multiplicative ::= call { ("*" | "/") call } ;
-call           ::= primary [ "(" call_args ")" ] ;
+call           ::= primary [ "(" call_args ")" ]
+                 | primary ".*"
+                 ;
 
 call_args ::= expr [ "," call_args ] ;
 
 primary ::= ID
           | INT
           | STR
+          | "&" expr
           | "(" expr ")"
           ;
 

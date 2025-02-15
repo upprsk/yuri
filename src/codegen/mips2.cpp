@@ -1,6 +1,7 @@
 #include "mips2.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #include "codegen/ssir.hpp"
@@ -52,6 +53,8 @@ struct CodegenFunc {
         size_t offset;
         size_t idx;
         size_t size;
+        size_t slot;
+        bool   has_addr_taken;
     };
 
     void codegen(ssir::Func const& f) {
@@ -71,8 +74,11 @@ struct CodegenFunc {
         std::span args = f.type.inner;
         args = args.subspan(0, args.size() - 1);
         for (auto const& arg : args) {
-            auto l = Local{
-                .offset = 0, .idx = locals.size(), .size = arg.bytesize()};
+            auto l = Local{.offset = 0,
+                           .idx = locals.size(),
+                           .size = arg.bytesize(),
+                           .slot = locals.size(),
+                           .has_addr_taken = false};
 
             locals.push_back(l);
         }
@@ -82,11 +88,29 @@ struct CodegenFunc {
 
             switch (c) {
                 case ssir::Opcode::Local: {
+                    auto slot = f.body.text_at(++i);
                     auto sz = f.body.text_at(++i);
-                    auto l =
-                        Local{.offset = 0, .idx = locals.size(), .size = sz};
+
+                    if (locals.size() != slot) {
+                        er->report_bug(
+                            b.span_for(i - 1),
+                            "expected local at slot {}, found slot {}", slot,
+                            locals.size());
+                    }
+
+                    auto l = Local{.offset = 0,
+                                   .idx = locals.size(),
+                                   .size = sz,
+                                   .slot = slot,
+                                   .has_addr_taken = false};
                     locals.push_back(l);
                 } break;
+
+                case ssir::Opcode::Ref: {
+                    auto idx = b.text_at(++i);
+                    locals.at(idx).has_addr_taken = true;
+                } break;
+
                 case ssir::Opcode::Li:
                 case ssir::Opcode::GetGlobal:
                 case ssir::Opcode::SetGlobal:
@@ -111,6 +135,8 @@ struct CodegenFunc {
             stack_size += word_size;
         }
 
+        // FIXME: diferentiate between simply saving the $sn register and and
+        // actual stack value
         for (auto& l : locals) {
             l.offset = stack_size;
             // FIXME: use proper alignment
@@ -144,10 +170,27 @@ struct CodegenFunc {
 
             switch (c) {
                 case ssir::Opcode::Local: {
+                    auto slot = f.body.text_at(++i);
+                    if (slot != locals.at(slot).slot) {
+                        er->report_bug(
+                            b.span_for(i - 1),
+                            "expected slot {} in local, but found {}", slot,
+                            locals.at(slot).slot);
+                    }
+
                     auto sz = f.body.text_at(++i);
 
                     auto dst = push_local();
                     auto src = pop_tmp();
+
+                    if (locals.at(slot).has_addr_taken) {
+                        // move to memory
+                        // FIXME: use the correct size for the variable
+                        add_op("sw", regs[src],
+                               fmt::to_string(locals.at(slot).offset),
+                               regs[reg_sp]);
+                        break;
+                    }
 
                     add_op("move", regs[dst], regs[src]);
                 } break;
@@ -178,14 +221,40 @@ struct CodegenFunc {
 
                 case ssir::Opcode::Get: {
                     auto slot = f.body.text_at(++i);
+                    if (slot != locals.at(slot).slot) {
+                        er->report_bug(b.span_for(i - 1),
+                                       "expected slot {} in get, but found {}",
+                                       slot, locals.at(slot).slot);
+                    }
+
                     auto dst = push_tmp();
+                    if (locals.at(slot).has_addr_taken) {
+                        // get from memory
+                        add_op("lw", regs[dst],
+                               fmt::to_string(locals.at(slot).offset),
+                               regs[reg_sp]);
+                        break;
+                    }
 
                     add_op("move", regs[dst], regs[reg_loc_base + slot]);
                 } break;
 
                 case ssir::Opcode::Set: {
                     auto slot = f.body.text_at(++i);
+                    if (slot != locals.at(slot).slot) {
+                        er->report_bug(b.span_for(i - 1),
+                                       "expected slot {} in set, but found {}",
+                                       slot, locals.at(slot).slot);
+                    }
+
                     auto src = pop_tmp();
+                    if (locals.at(slot).has_addr_taken) {
+                        // get from memory
+                        add_op("sw", regs[src],
+                               fmt::to_string(locals.at(slot).offset),
+                               regs[reg_sp]);
+                        break;
+                    }
 
                     add_op("move", regs[reg_loc_base + slot], regs[src]);
                 } break;
@@ -208,6 +277,32 @@ struct CodegenFunc {
                     auto label = f.body.text_at(++i);
                     add_op("beq", regs[cmp], regs[0],
                            fmt::format("{}.{}", f.name, label));
+                } break;
+
+                case ssir::Opcode::Ref: {
+                    auto slot = b.text_at(++i);
+                    if (slot != locals.at(slot).slot) {
+                        er->report_bug(b.span_for(i - 1),
+                                       "expected slot {} in ref, but found {}",
+                                       slot, locals.at(slot).slot);
+                    }
+
+                    if (!locals.at(slot).has_addr_taken) {
+                        er->report_bug(b.span_for(i - 1),
+                                       "local is not an l-value");
+                        return;
+                    }
+
+                    auto r = push_tmp();
+                    add_op("addiu", regs[r], regs[reg_sp],
+                           fmt::to_string(locals.at(slot).offset));
+                } break;
+
+                case ssir::Opcode::DeRef: {
+                    auto ptr = pop_tmp();
+                    auto r = push_tmp();
+
+                    add_op("lw", regs[r], "", regs[ptr]);
                 } break;
 
                 case ssir::Opcode::Call: {
@@ -261,6 +356,10 @@ struct CodegenFunc {
 
         size_t i{};
         for (auto const& local : locals) {
+            // if the local has it's address taken, we don't use a $sn register
+            // for it.
+            if (local.has_addr_taken) continue;
+
             add_op("sw", regs[reg_loc_base + i], fmt::to_string(local.offset),
                    regs[reg_sp]);
 
@@ -566,24 +665,6 @@ struct Codegen {
 
 void codegen_stdout(ssir::Module const& m, ErrorReporter& er) {
     auto c = Codegen{.er = &er};
-
-    fmt::println(".set noreorder");
-    fmt::println("");
-    fmt::println(".data");
-
-    for (auto const& [k, v] : m.globals) {
-        // FIXME: use the right size for the variable
-        fmt::println("{}: .word {}", v.name, v.initial_value);
-    }
-
-    fmt::println("");
-    fmt::println(".text");
-    fmt::println(".global _start");
-    fmt::println("_start:");
-    fmt::println("    jal main");
-    fmt::println("    move $a0, $v0");
-    fmt::println("    li $v0, 17");
-    fmt::println("    syscall");
 
     c.codegen(m);
 }

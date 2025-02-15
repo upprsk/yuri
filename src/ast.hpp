@@ -36,6 +36,8 @@ enum class AstNodeKind {
     Equal,
     NotEqual,
     Call,
+    Ref,
+    DeRef,
     Id,
     Int,
     Str,

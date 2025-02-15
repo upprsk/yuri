@@ -18,6 +18,8 @@ enum class Opcode : uint8_t {
     Local,
     Li,
     Pop,
+    Ref,
+    DeRef,
     GetGlobal,
     SetGlobal,
     Get,
