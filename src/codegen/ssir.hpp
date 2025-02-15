@@ -30,6 +30,8 @@ enum class Opcode : uint8_t {
     Iset,
     Add,
     Sub,
+    Mul,
+    Div,
     Seq,
     Sne,
     Slt,

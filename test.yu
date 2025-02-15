@@ -1,3 +1,3 @@
 func main() int {
-    var b = []int{10, 11, 12, 13, 14, 15};
+    var a = 4 * 2;
 }

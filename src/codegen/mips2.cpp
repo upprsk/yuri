@@ -299,6 +299,8 @@ struct CodegenFunc {
 
                 case ssir::Opcode::Add: binop("addu"); break;
                 case ssir::Opcode::Sub: binop("subu"); break;
+                case ssir::Opcode::Mul: binop("mul"); break;
+                case ssir::Opcode::Div: binop("div"); break;
                 case ssir::Opcode::Seq: binop("seq"); break;
                 case ssir::Opcode::Sne: binop("sne"); break;
                 case ssir::Opcode::Slt: binop("slt"); break;
@@ -655,11 +657,12 @@ struct CodegenFunc {
         for (auto const& op : output) {
             if (op.op == "lw" || op.op == "sw") {
                 fmt::println("    {} {}, {}({})", op.op, op.r, op.a, op.b);
-            } else if (op.op == "addu" || op.op == "subu" || op.op == "sne" ||
-                       op.op == "seq" || op.op == "slt" || op.op == "sgt" ||
-                       op.op == "beq" || op.op == "bne" || op.op == "blt" ||
-                       op.op == "ble" || op.op == "bgt" || op.op == "bge" ||
-                       op.op == "addiu" || op.op == "subiu") {
+            } else if (op.op == "addu" || op.op == "subu" || op.op == "mul" ||
+                       op.op == "div" || op.op == "sne" || op.op == "seq" ||
+                       op.op == "slt" || op.op == "sgt" || op.op == "beq" ||
+                       op.op == "bne" || op.op == "blt" || op.op == "ble" ||
+                       op.op == "bgt" || op.op == "bge" || op.op == "addiu" ||
+                       op.op == "subiu") {
                 fmt::println("    {} {}, {}, {}", op.op, op.r, op.a, op.b);
             } else if (op.op == "move" || op.op == "li" || op.op == "la") {
                 fmt::println("    {} {}, {}", op.op, op.r, op.a);

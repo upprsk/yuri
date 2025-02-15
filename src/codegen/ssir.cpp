@@ -242,6 +242,8 @@ struct CodegenFunc {
 
             case AstNodeKind::Add: binop(Opcode::Add); break;
             case AstNodeKind::Sub: binop(Opcode::Sub); break;
+            case AstNodeKind::Mul: binop(Opcode::Mul); break;
+            case AstNodeKind::Div: binop(Opcode::Div); break;
             case AstNodeKind::LessThan: binop(Opcode::Slt); break;
             case AstNodeKind::GreaterThan: binop(Opcode::Sgt); break;
             case AstNodeKind::Equal: binop(Opcode::Seq); break;
@@ -533,6 +535,8 @@ void dump_module(Module const& m) {
                 case Opcode::Pop:
                 case Opcode::Add:
                 case Opcode::Sub:
+                case Opcode::Mul:
+                case Opcode::Div:
                 case Opcode::Seq:
                 case Opcode::Sne:
                 case Opcode::Slt:
@@ -577,6 +581,8 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::Iset: name = "Iset"; break;
         case yuri::ssir::Opcode::Add: name = "Add"; break;
         case yuri::ssir::Opcode::Sub: name = "Sub"; break;
+        case yuri::ssir::Opcode::Mul: name = "Mul"; break;
+        case yuri::ssir::Opcode::Div: name = "Div"; break;
         case yuri::ssir::Opcode::Seq: name = "Seq"; break;
         case yuri::ssir::Opcode::Sne: name = "Sne"; break;
         case yuri::ssir::Opcode::Slt: name = "Slt"; break;
