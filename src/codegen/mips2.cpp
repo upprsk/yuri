@@ -526,6 +526,16 @@ struct CodegenFunc {
                     output.erase(output.begin() + i-- - 1);
                 }
 
+                //    la tA, B
+                //    move C, tA
+                // -> la C, B
+                else if (prev.op == "la" && curr.op == "move" &&
+                         prev.r.at(1) == 't' && prev.r == curr.a) {
+                    had_change = true;
+                    output.at(i) = Op::init("la", curr.r, prev.a);
+                    output.erase(output.begin() + i-- - 1);
+                }
+
                 //    move tA, B
                 //    addu _, _, tA
                 // -> addu _, _, B
