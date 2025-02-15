@@ -420,6 +420,16 @@ struct Parser {
         auto expr = parse_primary();
 
         auto t = peek();
+        if (t.type == TokenType::Lbracket) {
+            advance();
+
+            auto idx = parse_expr();
+            try_consume(TokenType::Rbracket, prev_span(), "expected ']'");
+
+            return AstNode::Binary(expr.span.extend(prev_span()),
+                                   AstNodeKind::Index, expr, idx);
+        }
+
         if (t.type == TokenType::DotStar) {
             advance();
             return AstNode::Unary(expr.span.extend(t.span), AstNodeKind::DeRef,

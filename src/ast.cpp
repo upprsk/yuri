@@ -331,6 +331,21 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             return set_type(Type::Bool());
         }
+        case AstNodeKind::Index: {
+            auto lhs = children.at(0).add_types(env, er);
+            if (!lhs.is_array()) {
+                er.report_error(span, "can't index non-array {}", lhs);
+                return set_type(Type::Err());
+            }
+
+            auto rhs = children.at(1).add_types(env, er);
+            if (!rhs.is_integral()) {
+                er.report_error(
+                    span, "can't index array with non integer type {}", rhs);
+            }
+
+            return set_type(lhs.inner.at(0));
+        }
         case AstNodeKind::Call: {
             auto callee = children.at(0).add_types(env, er);
             if (!callee.is_func()) {
@@ -467,6 +482,7 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind c,
         case T::GreaterThanEqual: name = "GreaterThanEqual"; break;
         case T::Equal: name = "Equal"; break;
         case T::NotEqual: name = "NotEqual"; break;
+        case T::Index: name = "Index"; break;
         case T::Call: name = "Call"; break;
         case T::Ref: name = "Ref"; break;
         case T::DeRef: name = "DeRef"; break;

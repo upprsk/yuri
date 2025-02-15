@@ -1,3 +1,18 @@
+asm func printi(v: int) {
+    "li $v0, 1"
+    "syscall"
+    "jr $ra"
+}
+
 func main() int {
-    var a = 4 * 2;
+    var count = 2;
+    var a = []int{14, 15};
+
+    var i = 0;
+    while i < count {
+        var b = a[i];
+        printi(b);
+
+        i = i + 1;
+    }
 }

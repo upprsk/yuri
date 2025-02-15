@@ -280,6 +280,20 @@ struct CodegenFunc {
                 append_op(node.span, Opcode::DeRef);
             } break;
 
+            case AstNodeKind::Index: {
+                auto const& t = node.first().type.inner.at(0);
+
+                codegen_expr(node.first());
+                codegen_expr(node.second());
+
+                append_op(node.second().span, Opcode::Li);
+                append_const(node.second().span, t.bytesize());
+                append_op(node.second().span, Opcode::Mul);
+                append_op(node.second().span, Opcode::Add);
+
+                append_op(node.span, Opcode::DeRef);
+            } break;
+
             case AstNodeKind::Call: {
                 std::span args = node.children;
                 args = args.subspan(1, args.size() - 1);

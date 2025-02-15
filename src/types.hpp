@@ -41,6 +41,9 @@ struct Type {
     [[nodiscard]] constexpr auto is_ptr() const -> bool {
         return kind == TypeKind::Ptr;
     }
+    [[nodiscard]] constexpr auto is_array() const -> bool {
+        return kind == TypeKind::Array;
+    }
 
     // NOTE: remember to add other integer types here in the future
     [[nodiscard]] constexpr auto is_integral() const -> bool {

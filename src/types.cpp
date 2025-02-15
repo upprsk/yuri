@@ -19,6 +19,7 @@ auto fmt::formatter<yuri::TypeKind>::format(yuri::TypeKind  c,
         case T::Int: name = "Int"; break;
         case T::Bool: name = "Bool"; break;
         case T::Ptr: name = "Ptr"; break;
+        case T::Array: name = "Array"; break;
     }
 
     // return formatter<string_view>::format(name, ctx);

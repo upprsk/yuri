@@ -62,14 +62,14 @@ struct CodegenFunc {
         size_t size;
     };
 
-    void codegen(ssir::Func const& f) {
+    void codegen(ssir::Func const& f, bool do_optimize) {
         process(f);
 
         codegen_preamble(f);
         codegen_body(f);
         codegen_postamble(f);
 
-        optimize(f);
+        if (do_optimize) optimize(f);
         dump_output(f);
     }
 
@@ -188,10 +188,12 @@ struct CodegenFunc {
             switch (c) {
                 case ssir::Opcode::Dupe: {
                     auto r = pop_tmp();
-                    auto a = push_tmp();
+                    push_tmp();
                     auto b = push_tmp();
 
-                    add_op("move", regs[b], regs[r]);
+                    // we need this `move` to not be optimized out, so we add an
+                    // extra ' '
+                    add_op("move ", regs[b], regs[r]);
                 } break;
 
                 case ssir::Opcode::Local: {
@@ -350,6 +352,7 @@ struct CodegenFunc {
                     auto ptr = pop_tmp();
                     auto r = push_tmp();
 
+                    // FIXME: use proper sizes
                     add_op("lw", regs[r], "", regs[ptr]);
                 } break;
 
@@ -664,7 +667,8 @@ struct CodegenFunc {
                        op.op == "bgt" || op.op == "bge" || op.op == "addiu" ||
                        op.op == "subiu") {
                 fmt::println("    {} {}, {}, {}", op.op, op.r, op.a, op.b);
-            } else if (op.op == "move" || op.op == "li" || op.op == "la") {
+            } else if (op.op == "move" || op.op == "move " || op.op == "li" ||
+                       op.op == "la") {
                 fmt::println("    {} {}, {}", op.op, op.r, op.a);
             } else if (op.op == "jr" || op.op == "jal" || op.op == "b") {
                 fmt::println("    {} {}", op.op, op.r);
@@ -751,7 +755,7 @@ struct Codegen {
 
         auto c =
             CodegenFunc{.er = er, .output = {}, .locals = {}, .mregions = {}};
-        c.codegen(f);
+        c.codegen(f, true);
     }
 
     ErrorReporter* er;
