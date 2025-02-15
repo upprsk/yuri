@@ -36,7 +36,7 @@ struct Env {
     Type const* current_return_type = nullptr;
     Span        current_return_span{};
     std::unordered_map<std::string, std::pair<Type, Type>> entries{};
-    Env*                                                   parent;
+    Env*                                                   parent{};
 };
 
 }  // namespace yuri
