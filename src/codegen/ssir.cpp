@@ -93,32 +93,40 @@ struct CodegenFunc {
 
             case AstNodeKind::Assign: {
                 auto const& lhs = node.first();
-                if (!lhs.is_id()) {
-                    er->report_error(
-                        lhs.span,
-                        "can't use {} as left hand side in assignment",
-                        lhs.kind);
-                    return;
-                }
+                if (lhs.is_id()) {
+                    codegen_expr(node.second());
 
-                codegen_expr(node.second());
+                    auto local = find_local(lhs.value_string());
+                    if (!local) {
+                        auto global = find_global(lhs.value_string());
+                        if (!global) {
+                            er->report_bug(lhs.span,
+                                           "undefined identifier: '{}'",
+                                           lhs.value_string());
+                            return;
+                        }
 
-                auto local = find_local(lhs.value_string());
-                if (!local) {
-                    auto global = find_global(lhs.value_string());
-                    if (!global) {
-                        er->report_bug(lhs.span, "undefined identifier: '{}'",
-                                       lhs.value_string());
-                        return;
+                        append_op(lhs.span, Opcode::SetGlobal);
+                        append_id(lhs.span, global->name);
+                        break;
                     }
 
-                    append_op(lhs.span, Opcode::SetGlobal);
-                    append_id(lhs.span, global->name);
+                    append_op(lhs.span, Opcode::Set);
+                    append_idx(node.span, local->slot);
                     break;
                 }
 
-                append_op(lhs.span, Opcode::Set);
-                append_idx(node.span, local->slot);
+                if (lhs.is_deref()) {
+                    codegen_expr_addr(lhs.first());
+                    codegen_expr(node.second());
+                    append_op(node.span, Opcode::Iset);
+
+                    break;
+                }
+
+                er->report_error(lhs.span,
+                                 "can't use {} as left hand side in assignment",
+                                 lhs.kind);
             } break;
 
             case AstNodeKind::WhileStmt: {
@@ -277,6 +285,23 @@ struct CodegenFunc {
                                node.kind);
                 break;
         }
+    }
+
+    void codegen_expr_addr(AstNode const& node) {
+        if (node.is_id()) {
+            auto local = find_local(node.value_string());
+            if (!local) {
+                er->report_bug(node.span, "undefined identifier: '{}'",
+                               node.value_string());
+                return;
+            }
+
+            append_op(node.span, Opcode::Get);
+            append_idx(node.span, local->slot);
+            return;
+        }
+
+        er->report_bug(node.span, "can't generate address from {}", node);
     }
 
     [[nodiscard]] auto find_function_name(std::string const& name) const
@@ -467,6 +492,7 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, ", {}, {}", func.body.id_at(id), argc);
                 } break;
 
+                case Opcode::Iset:
                 case Opcode::DeRef:
                 case Opcode::Pop:
                 case Opcode::Add:
@@ -509,6 +535,7 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::SetGlobal: name = "SetGlobal"; break;
         case yuri::ssir::Opcode::Get: name = "Get"; break;
         case yuri::ssir::Opcode::Set: name = "Set"; break;
+        case yuri::ssir::Opcode::Iset: name = "Iset"; break;
         case yuri::ssir::Opcode::Add: name = "Add"; break;
         case yuri::ssir::Opcode::Sub: name = "Sub"; break;
         case yuri::ssir::Opcode::Seq: name = "Seq"; break;

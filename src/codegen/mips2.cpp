@@ -259,6 +259,12 @@ struct CodegenFunc {
                     add_op("move", regs[reg_loc_base + slot], regs[src]);
                 } break;
 
+                case ssir::Opcode::Iset: {
+                    auto rhs = pop_tmp();
+                    auto lhs = pop_tmp();
+                    add_op("sw", regs[rhs], "", regs[lhs]);
+                } break;
+
                 case ssir::Opcode::Add: binop("addu"); break;
                 case ssir::Opcode::Sub: binop("subu"); break;
                 case ssir::Opcode::Seq: binop("seq"); break;

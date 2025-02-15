@@ -24,6 +24,7 @@ enum class Opcode : uint8_t {
     SetGlobal,
     Get,
     Set,
+    Iset,
     Add,
     Sub,
     Seq,
