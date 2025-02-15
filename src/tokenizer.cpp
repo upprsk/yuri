@@ -9,8 +9,11 @@
 namespace yuri {
 
 struct Tokenizer {
-    constexpr auto span() const -> Span { return {start, current}; }
-    constexpr auto peek() const -> uint8_t {
+    [[nodiscard]] constexpr auto span() const -> Span {
+        return {.begin = start, .end = current};
+    }
+
+    [[nodiscard]] constexpr auto peek() const -> uint8_t {
         if (is_at_end()) return 0;
 
         return source.at(current);
@@ -36,7 +39,7 @@ struct Tokenizer {
         if (!is_at_end()) current++;
     }
 
-    constexpr auto is_at_end() const -> bool {
+    [[nodiscard]] constexpr auto is_at_end() const -> bool {
         return current == source.length();
     }
 

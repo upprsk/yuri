@@ -43,21 +43,25 @@ enum class AstNodeKind {
 };
 
 struct AstNode {
-    std::variant<std::monostate, std::string, uint64_t> value{};
+    std::variant<std::monostate, std::string, uint64_t> value;
     std::vector<AstNode>                                children;
     Span                                                span;
     AstNodeKind                                         kind;
     Type                                                type{};
 
     static auto Nil() -> AstNode {
-        return {.children = {}, .span = {}, .kind = AstNodeKind::Nil};
+        return {
+            .value = {}, .children = {}, .span = {}, .kind = AstNodeKind::Nil};
     }
 
     static auto SourceFile(Span span, std::vector<AstNode> const& children)
         -> AstNode {
-        return {.children = children,
-                .span = span,
-                .kind = AstNodeKind::SourceFile};
+        return {
+            .value = {},
+            .children = children,
+            .span = span,
+            .kind = AstNodeKind::SourceFile,
+        };
     }
 
     static auto Func(Span span, std::string const& name,
@@ -113,6 +117,7 @@ struct AstNode {
     static auto Block(Span span, std::vector<AstNode> const& children)
         -> AstNode {
         return {
+            .value = {},
             .children = children,
             .span = span,
             .kind = AstNodeKind::Block,
@@ -122,6 +127,7 @@ struct AstNode {
     static auto IfStmt(Span span, AstNode const& cond, AstNode const& wt,
                        AstNode const& wf) -> AstNode {
         return {
+            .value = {},
             .children = {cond, wt, wf},
             .span = span,
             .kind = AstNodeKind::IfStmt,
@@ -131,6 +137,7 @@ struct AstNode {
     static auto Unary(Span span, AstNodeKind kind, AstNode const& child)
         -> AstNode {
         return {
+            .value = {},
             .children = {child},
             .span = span,
             .kind = kind,
@@ -140,6 +147,7 @@ struct AstNode {
     static auto Binary(Span span, AstNodeKind kind, AstNode const& left,
                        AstNode const& right) -> AstNode {
         return {
+            .value = {},
             .children = {left, right},
             .span = span,
             .kind = kind,
@@ -152,6 +160,7 @@ struct AstNode {
         for (auto const& n : args) children.push_back(n);
 
         return {
+            .value = {},
             .children = children,
             .span = span,
             .kind = AstNodeKind::Call,
@@ -201,32 +210,46 @@ struct AstNode {
         };
     }
 
-    constexpr auto first() const -> AstNode const& { return children.at(0); }
-    constexpr auto second() const -> AstNode const& { return children.at(1); }
-    constexpr auto last() const -> AstNode const& {
+    [[nodiscard]] constexpr auto first() const -> AstNode const& {
+        return children.at(0);
+    }
+
+    [[nodiscard]] constexpr auto second() const -> AstNode const& {
+        return children.at(1);
+    }
+
+    [[nodiscard]] constexpr auto last() const -> AstNode const& {
         return children.at(children.size() - 1);
     }
 
-    constexpr auto value_string() const -> std::string const& {
+    [[nodiscard]] constexpr auto value_string() const -> std::string const& {
         return std::get<std::string>(value);
     }
 
-    constexpr auto value_int() const -> uint64_t {
+    [[nodiscard]] constexpr auto value_int() const -> uint64_t {
         return std::get<uint64_t>(value);
     }
 
-    constexpr auto is_lvalue() const -> bool { return kind == AstNodeKind::Id; }
+    [[nodiscard]] constexpr auto is_lvalue() const -> bool {
+        return kind == AstNodeKind::Id;
+    }
 
-    constexpr auto is_nil() const -> bool { return kind == AstNodeKind::Nil; }
-    constexpr auto is_id() const -> bool { return kind == AstNodeKind::Id; }
-    constexpr auto is_func() const -> bool { return kind == AstNodeKind::Func; }
-    constexpr auto is_block() const -> bool {
+    [[nodiscard]] constexpr auto is_nil() const -> bool {
+        return kind == AstNodeKind::Nil;
+    }
+    [[nodiscard]] constexpr auto is_id() const -> bool {
+        return kind == AstNodeKind::Id;
+    }
+    [[nodiscard]] constexpr auto is_func() const -> bool {
+        return kind == AstNodeKind::Func;
+    }
+    [[nodiscard]] constexpr auto is_block() const -> bool {
         return kind == AstNodeKind::Block;
     }
-    constexpr auto is_source_file() const -> bool {
+    [[nodiscard]] constexpr auto is_source_file() const -> bool {
         return kind == AstNodeKind::SourceFile;
     }
-    constexpr auto is_func_arg() const -> bool {
+    [[nodiscard]] constexpr auto is_func_arg() const -> bool {
         return kind == AstNodeKind::FuncDeclArg;
     }
 

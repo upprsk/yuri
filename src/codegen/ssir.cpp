@@ -328,7 +328,7 @@ struct CodegenFunc {
     ErrorReporter*     er;
     Module*            m;
     Func               f{};
-    std::vector<Local> locals{};
+    std::vector<Local> locals;
 };
 
 struct Codegen {
@@ -343,7 +343,7 @@ struct Codegen {
 
         for (auto const& decl : node.children) {
             if (decl.kind == AstNodeKind::Func) {
-                auto c = CodegenFunc{.er = er, .m = &m};
+                auto c = CodegenFunc{.er = er, .m = &m, .locals = {}};
                 c.codegen(decl);
 
                 m.entries[c.f.name] = std::move(c.f);

@@ -20,7 +20,7 @@ class ErrorReporter {
 
 public:
     constexpr ErrorReporter(std::string source, std::string source_path)
-        : source{source}, source_path{source_path} {}
+        : source{std::move(source)}, source_path{std::move(source_path)} {}
 
     template <typename... T>
     void report_error(Span s, fmt::format_string<T...> fmt, T&&... args) {
@@ -44,12 +44,15 @@ public:
 
     // -----------------------------------------------------------------------
 
-    constexpr auto had_error() const -> bool { return error_count > 0; }
+    [[nodiscard]] constexpr auto had_error() const -> bool {
+        return error_count > 0;
+    }
 
     // -----------------------------------------------------------------------
 
 private:
-    constexpr auto find_rowcol(Span s) const -> std::pair<uint32_t, uint32_t> {
+    [[nodiscard]] constexpr auto find_rowcol(Span s) const
+        -> std::pair<uint32_t, uint32_t> {
         uint32_t col{};
         uint32_t row{};
 
@@ -64,7 +67,7 @@ private:
         return {row, col};
     }
 
-    constexpr auto find_linestart(Span s) const -> Span {
+    [[nodiscard]] constexpr auto find_linestart(Span s) const -> Span {
         uint32_t line_start{};
         uint32_t line_end{};
 

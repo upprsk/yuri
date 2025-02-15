@@ -18,18 +18,30 @@ enum class TypeKind {
 
 struct Type {
     TypeKind          kind;
-    std::vector<Type> inner{};
+    std::vector<Type> inner;
 
-    constexpr auto is_err() const -> bool { return kind == TypeKind::Err; }
-    constexpr auto is_void() const -> bool { return kind == TypeKind::Void; }
-    constexpr auto is_type() const -> bool { return kind == TypeKind::Type; }
-    constexpr auto is_bool() const -> bool { return kind == TypeKind::Bool; }
-    constexpr auto is_func() const -> bool { return kind == TypeKind::Func; }
+    [[nodiscard]] constexpr auto is_err() const -> bool {
+        return kind == TypeKind::Err;
+    }
+    [[nodiscard]] constexpr auto is_void() const -> bool {
+        return kind == TypeKind::Void;
+    }
+    [[nodiscard]] constexpr auto is_type() const -> bool {
+        return kind == TypeKind::Type;
+    }
+    [[nodiscard]] constexpr auto is_bool() const -> bool {
+        return kind == TypeKind::Bool;
+    }
+    [[nodiscard]] constexpr auto is_func() const -> bool {
+        return kind == TypeKind::Func;
+    }
 
     // NOTE: remember to add other integer types here in the future
-    constexpr auto is_integral() const -> bool { return kind == TypeKind::Int; }
+    [[nodiscard]] constexpr auto is_integral() const -> bool {
+        return kind == TypeKind::Int;
+    }
 
-    constexpr auto bytesize() const -> uint32_t {
+    [[nodiscard]] constexpr auto bytesize() const -> uint32_t {
         switch (kind) {
             case TypeKind::Err:
             case TypeKind::Void:
@@ -46,7 +58,7 @@ struct Type {
         return kind == o.kind && inner == o.inner;
     }
 
-    static auto Void() -> Type { return {.kind = TypeKind::Void}; }
+    static auto Void() -> Type { return {.kind = TypeKind::Void, .inner = {}}; }
 
     static auto Func(std::vector<Type> const& args, Type const& return_type)
         -> Type {
@@ -56,10 +68,12 @@ struct Type {
         return {.kind = TypeKind::Func, .inner = inner};
     }
 
-    static auto Int() -> Type { return {.kind = TypeKind::Int}; }
-    static auto Bool() -> Type { return {.kind = TypeKind::Bool}; }
-    static auto Err() -> Type { return {.kind = TypeKind::Err}; }
-    static auto make_type() -> Type { return {.kind = TypeKind::Type}; }
+    static auto Int() -> Type { return {.kind = TypeKind::Int, .inner = {}}; }
+    static auto Bool() -> Type { return {.kind = TypeKind::Bool, .inner = {}}; }
+    static auto Err() -> Type { return {.kind = TypeKind::Err, .inner = {}}; }
+    static auto make_type() -> Type {
+        return {.kind = TypeKind::Type, .inner = {}};
+    }
 };
 
 }  // namespace yuri

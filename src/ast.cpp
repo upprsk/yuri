@@ -85,9 +85,6 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
                                 ret_anon);
             }
 
-            auto ret_span = children.at(children.size() - 2).is_nil()
-                                ? span
-                                : children.at(children.size() - 2).span;
             auto ret =
                 children.at(children.size() - 2).is_nil()
                     ? Type::Void()

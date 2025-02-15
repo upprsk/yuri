@@ -14,14 +14,20 @@
 namespace yuri {
 
 struct Parser {
-    constexpr auto peek() const -> Token { return tokens[current]; }
-    constexpr auto peek_prev() const -> Token {
+    [[nodiscard]] constexpr auto peek() const -> Token {
+        return tokens[current];
+    }
+
+    [[nodiscard]] constexpr auto peek_prev() const -> Token {
         if (current == 0) return {.span = {}, .type = TokenType::Err};
         return tokens[current - 1];
     }
 
-    constexpr auto span() const -> Span { return peek().span; }
-    constexpr auto prev_span() const -> Span { return peek_prev().span; }
+    [[nodiscard]] constexpr auto span() const -> Span { return peek().span; }
+
+    [[nodiscard]] constexpr auto prev_span() const -> Span {
+        return peek_prev().span;
+    }
 
     constexpr auto peek_and_advance() -> Token {
         auto t = peek();
@@ -44,10 +50,12 @@ struct Parser {
         }
     }
 
-    constexpr auto is_at_end() const -> bool { return peek().is_eof(); }
+    [[nodiscard]] constexpr auto is_at_end() const -> bool {
+        return peek().is_eof();
+    }
 
-    constexpr auto span_from(std::span<AstNode const> nodes,
-                             Span initial = {}) const -> Span {
+    [[nodiscard]] constexpr auto span_from(std::span<AstNode const> nodes,
+                                           Span initial = {}) const -> Span {
         if (nodes.empty()) return initial;
 
         return {.begin = nodes[0].span.begin,
