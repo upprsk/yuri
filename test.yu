@@ -1,24 +1,4 @@
-asm func printi(v: int) {
-    "li $v0, 1"
-    "syscall"
-    "jr $ra"
-}
-
-asm func readi() int {
-    "li $v0, 5"
-    "syscall"
-    "jr $ra"
-}
-
-var global = 1024;
-
-func a() {
-    global = global + 1;
-}
-
 func main() int {
-    a();
-
-    global = global + 1;
-    printi(global);
+    var a = 12;
+    var b = &a;
 }
