@@ -60,7 +60,7 @@ struct CodegenFunc {
     void codegen(ssir::Func const& f) {
         process(f);
 
-        codegen_pramble(f);
+        codegen_preamble(f);
         codegen_body(f);
         codegen_postamble(f);
 
@@ -356,7 +356,7 @@ struct CodegenFunc {
         }
     }
 
-    void codegen_pramble(ssir::Func const& f) {
+    void codegen_preamble(ssir::Func const& f) {
         add_op("subu", regs[reg_sp], regs[reg_sp], fmt::to_string(stack_size));
 
         auto argc = f.type.inner.size() - 1;
