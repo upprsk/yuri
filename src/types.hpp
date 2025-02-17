@@ -59,9 +59,9 @@ struct Type {
             case TypeKind::Type:
             case TypeKind::Func: return 0;
             case TypeKind::Int:
-            case TypeKind::Bool:
             case TypeKind::Ptr: return 4;
             case TypeKind::Half: return 2;
+            case TypeKind::Bool:
             case TypeKind::Byte: return 1;
             case TypeKind::Array: return inner.at(0).bytesize() * length;
         }
