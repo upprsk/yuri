@@ -299,6 +299,7 @@ struct CodegenFunc {
             case AstNodeKind::DeRef: {
                 codegen_expr(node.first());
                 append_op(node.span, Opcode::DeRef);
+                append_idx(node.span, node.type.bytesize());
             } break;
 
             case AstNodeKind::Index: {
@@ -313,6 +314,7 @@ struct CodegenFunc {
                 append_op(node.second().span, Opcode::Add);
 
                 append_op(node.span, Opcode::DeRef);
+                append_idx(node.span, t.bytesize());
             } break;
 
             case AstNodeKind::Cast: {
@@ -600,6 +602,7 @@ void dump_module(Module const& m) {
                     fmt::println(stderr, "[{}], {}", idx, v);
                 } break;
 
+                case Opcode::DeRef:
                 case Opcode::Iset:
                 case Opcode::Alloca: {
                     auto size = func.body.text_at(++i);
@@ -645,7 +648,6 @@ void dump_module(Module const& m) {
                 } break;
 
                 case Opcode::Dupe:
-                case Opcode::DeRef:
                 case Opcode::Pop:
                 case Opcode::Add:
                 case Opcode::Sub:

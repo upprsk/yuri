@@ -1,16 +1,8 @@
 asm func printi(v: int) { "li $v0, 1" "syscall" "jr $ra" }
 asm func print_str(s: *byte) { "li $v0, 4" "syscall" "jr $ra" }
 
-func add(a: byte, b: byte) byte {
-    return a + b;
-}
-
 func main() int {
-    var items = "Hello, world!";
-    print_str(items as *byte);
-
-    var a = 1 as byte;
-    var b = 2 as byte;
-    var c = add(a, b);
-    printi(c as int);
+    var a = 10 as byte;
+    var b = &a;
+    var c = b.*;
 }

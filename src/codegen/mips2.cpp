@@ -129,6 +129,7 @@ struct CodegenFunc {
                 case ssir::Opcode::Get:
                 case ssir::Opcode::Set:
                 case ssir::Opcode::Iset:
+                case ssir::Opcode::DeRef:
                 case ssir::Opcode::B:
                 case ssir::Opcode::Bz: i++; break;
 
@@ -375,11 +376,11 @@ struct CodegenFunc {
                 } break;
 
                 case ssir::Opcode::DeRef: {
+                    auto size = f.body.text_at(++i);
+
                     auto ptr = pop_tmp();
                     auto r = push_tmp();
 
-                    // FIXME: add sizes
-                    auto size = 4;
                     auto op = op_for_load(size);
                     add_op(op, regs[r], "", regs[ptr]);
                 } break;
