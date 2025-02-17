@@ -324,6 +324,8 @@ struct CodegenFunc {
                 if (lhs.is_integral()) {
                     if (rhs.is_integral()) {
                         // do nothing
+                        // TODO: handle sign extension
+                        // TODO: handle truncation
                     } else {
                         er->report_error(
                             node.span, "can't cast {} to non-integral type {}",
