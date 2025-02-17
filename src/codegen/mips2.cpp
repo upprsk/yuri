@@ -832,8 +832,15 @@ struct Codegen {
         fmt::println("");
 
         for (auto const& [k, v] : m.globals) {
-            // FIXME: use the right size for the variable
-            fmt::println("{}: .word {}", v.name, v.initial_value);
+            // TODO: handle things that are not integers
+            std::string_view ty = ".err";
+            switch (v.type.bytesize()) {
+                case 4: ty = ".word"; break;
+                case 2: ty = ".half"; break;
+                case 1: ty = ".byte"; break;
+            }
+
+            fmt::println("{}: {} {}", v.name, ty, v.initial_value);
         }
 
         fmt::println("");
