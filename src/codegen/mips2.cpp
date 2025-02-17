@@ -52,6 +52,7 @@ struct CodegenFunc {
         size_t offset;
         size_t idx;
         size_t size;
+        size_t align;
         size_t slot;
         bool   has_addr_taken;
     };
@@ -81,6 +82,7 @@ struct CodegenFunc {
             auto l = Local{.offset = 0,
                            .idx = locals.size(),
                            .size = arg.bytesize(),
+                           .align = arg.bytealign(),
                            .slot = locals.size(),
                            .has_addr_taken = false};
 
@@ -92,20 +94,20 @@ struct CodegenFunc {
 
             switch (c) {
                 case ssir::Opcode::Local: {
-                    auto slot = f.body.text_at(++i);
-                    auto sz = f.body.text_at(++i);
-
-                    if (locals.size() != slot) {
-                        er->report_bug(
-                            b.span_for(i - 1),
-                            "expected local at slot {}, found slot {}", slot,
-                            locals.size());
+                    auto lidx = f.body.text_at(++i);
+                    if (lidx != locals.size()) {
+                        er->report_bug(b.span_for(i - 1),
+                                       "expected local index of {}, but got {}",
+                                       locals.size(), lidx);
                     }
+
+                    auto const& local = f.body.local_at(lidx);
 
                     auto l = Local{.offset = 0,
                                    .idx = locals.size(),
-                                   .size = sz,
-                                   .slot = slot,
+                                   .size = local.size,
+                                   .align = local.align,
+                                   .slot = locals.size(),
                                    .has_addr_taken = false};
                     locals.push_back(l);
                 } break;
@@ -147,8 +149,7 @@ struct CodegenFunc {
         }
 
         for (auto& l : locals) {
-            // FIXME: use proper alignment, for now using `4` as alignment
-            stack_size = ALIGN(stack_size, l.size);
+            stack_size = ALIGN(stack_size, l.align);
             l.offset = stack_size;
             stack_size += l.size;
 
@@ -201,26 +202,11 @@ struct CodegenFunc {
 
                 case ssir::Opcode::Local: {
                     auto slot = f.body.text_at(++i);
-                    auto sz = f.body.text_at(++i);
-
-                    if (slot != locals.at(slot).slot) {
-                        er->report_bug(
-                            b.span_for(i - 1),
-                            "expected slot {} in local, but found {}", slot,
-                            locals.at(slot).slot);
-                    }
 
                     auto dst = push_local();
                     auto src = pop_tmp();
 
                     if (locals.at(slot).has_addr_taken) {
-                        if (locals.at(slot).size != sz) {
-                            er->report_bug(f.body.span_for(i - 1),
-                                           "invalid size found, local marked "
-                                           "as {}, but instruction has {}",
-                                           locals.at(slot).size, sz);
-                        }
-
                         // move to memory
                         auto op = op_for_store(locals.at(slot).size);
                         add_op(op, regs[src],

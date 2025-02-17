@@ -69,6 +69,23 @@ struct Type {
         return 0;
     }
 
+    [[nodiscard]] constexpr auto bytealign() const -> uint32_t {
+        switch (kind) {
+            case TypeKind::Err:
+            case TypeKind::Void:
+            case TypeKind::Type:
+            case TypeKind::Func: return 0;
+            case TypeKind::Int:
+            case TypeKind::Ptr: return 4;
+            case TypeKind::Half: return 2;
+            case TypeKind::Byte:
+            case TypeKind::Bool: return 1;
+            case TypeKind::Array: return inner.at(0).bytealign();
+        }
+
+        return 0;
+    }
+
     constexpr auto operator==(Type const& o) const -> bool {
         return kind == o.kind && inner == o.inner;
     }

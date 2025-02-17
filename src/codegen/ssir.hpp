@@ -44,6 +44,11 @@ enum class Opcode : uint8_t {
 };
 
 struct Block {
+    struct Local {
+        uint32_t size;
+        uint32_t align;
+    };
+
     [[nodiscard]] constexpr auto opcode_at(size_t i) const -> Opcode {
         return static_cast<Opcode>(text_at(i));
     }
@@ -68,6 +73,10 @@ struct Block {
 
     [[nodiscard]] constexpr auto id_at(size_t i) const -> std::string const& {
         return ids.at(i);
+    }
+
+    [[nodiscard]] constexpr auto local_at(size_t i) const -> Local const& {
+        return locals.at(i);
     }
 
     [[nodiscard]] constexpr auto span_for(size_t i) const -> Span {
@@ -100,6 +109,12 @@ struct Block {
         return sz;
     }
 
+    auto append_local(uint32_t size, uint32_t align) -> size_t {
+        auto sz = locals.size();
+        locals.push_back({.size = size, .align = align});
+        return sz;
+    }
+
     void append_span(Span s) {
         if (spans.size() == 0) {
             spans.emplace_back(1, s);
@@ -118,6 +133,7 @@ struct Block {
     std::vector<uint64_t>                consts;
     std::vector<uint8_t>                 data;
     std::vector<size_t>                  labels;
+    std::vector<Local>                   locals;
     std::vector<std::string>             ids;
     std::vector<std::pair<size_t, Span>> spans;
 };

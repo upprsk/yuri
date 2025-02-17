@@ -86,8 +86,8 @@ struct CodegenFunc {
                 // TODO: type coercion
                 codegen_expr(node.second());
                 append_op(node.span, Opcode::Local);
-                append_idx(node.span, locals.size());
-                append_idx(node.span, node.type.bytesize());
+                append_local(node.span, node.type.bytesize(),
+                             node.type.bytealign());
                 add_local(node.value_string(), node.type.bytesize());
                 break;
 
@@ -324,6 +324,7 @@ struct CodegenFunc {
                 if (lhs.is_integral()) {
                     if (rhs.is_integral()) {
                         // do nothing
+
                         // TODO: handle sign extension
                         // TODO: handle truncation
                     } else {
@@ -457,6 +458,15 @@ struct CodegenFunc {
     void append_op(Span s, Opcode op) {
         f.body.append_op(op);
         f.body.append_span(s);
+    }
+
+    void append_local(Span s, uint32_t size, uint32_t align) {
+        auto idx = f.body.append_local(size, align);
+        if (idx > std::numeric_limits<uint8_t>::max()) {
+            er->report_bug({}, "maximum number of locals reached");
+        }
+
+        append_idx(s, idx);
     }
 
     void append_id(Span s, std::string const& id) {
@@ -605,9 +615,10 @@ void dump_module(Module const& m) {
                 } break;
 
                 case Opcode::Local: {
-                    auto slot = func.body.text_at(++i);
-                    auto sz = func.body.text_at(++i);
-                    fmt::println(stderr, ", {}, {}B", slot, sz);
+                    auto        idx = func.body.text_at(++i);
+                    auto const& l = func.body.local_at(idx);
+                    fmt::println(stderr, "[{}], {}B, {}B", idx, l.size,
+                                 l.align);
                 } break;
 
                 case Opcode::B:
