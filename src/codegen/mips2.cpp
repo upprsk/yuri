@@ -436,7 +436,10 @@ struct CodegenFunc {
         for (auto const& local : locals) {
             // if the local has it's address taken, we don't use a $sn register
             // for it.
-            if (local.has_addr_taken) continue;
+            if (local.has_addr_taken) {
+                i++;
+                continue;
+            }
 
             auto op = op_for_store(local.size);
             add_op(op, regs[reg_loc_base + i], fmt::to_string(local.offset),
@@ -462,6 +465,11 @@ struct CodegenFunc {
 
         size_t i{};
         for (auto const& local : locals) {
+            if (local.has_addr_taken) {
+                i++;
+                continue;
+            }
+
             auto op = op_for_load(local.size);
             add_op(op, regs[reg_loc_base + i], fmt::to_string(local.offset),
                    regs[reg_sp]);
