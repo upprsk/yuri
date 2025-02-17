@@ -33,6 +33,8 @@ enum class Opcode : uint8_t {
     Sub,
     Mul,
     Div,
+    Or,
+    And,
     Seq,
     Sne,
     Slt,

@@ -327,6 +327,8 @@ struct CodegenFunc {
                 case ssir::Opcode::Sub: binop("subu"); break;
                 case ssir::Opcode::Mul: binop("mul"); break;
                 case ssir::Opcode::Div: binop("div"); break;
+                case ssir::Opcode::And: binop("and"); break;
+                case ssir::Opcode::Or: binop("or"); break;
                 case ssir::Opcode::Seq: binop("seq"); break;
                 case ssir::Opcode::Sne: binop("sne"); break;
                 case ssir::Opcode::Slt: binop("slt"); break;
@@ -526,7 +528,8 @@ struct CodegenFunc {
                 //    addu _, _, tA
                 // -> addu _, _, B
                 else if (prev.op == "move" &&
-                         (curr.op == "addu" || curr.op == "subu") &&
+                         (curr.op == "addu" || curr.op == "subu" ||
+                          curr.op == "and" || curr.op == "or") &&
                          prev.r.at(1) == 't' && prev.r == curr.b) {
                     had_change = true;
                     output.at(i) = Op::init(curr.op, curr.r, curr.a, prev.a);
@@ -538,6 +541,7 @@ struct CodegenFunc {
                 // -> addu _, B, _
                 else if (prev.op == "move" &&
                          (curr.op == "addu" || curr.op == "subu" ||
+                          curr.op == "and" || curr.op == "or" ||
                           curr.op == "beq" || curr.op == "bne" ||
                           curr.op == "blt" || curr.op == "ble" ||
                           curr.op == "bgt" || curr.op == "bge" ||
@@ -564,7 +568,8 @@ struct CodegenFunc {
                 //    addu tA, _, _
                 //    move B, tA
                 // -> addu B, _, _
-                else if ((prev.op == "addu" || prev.op == "subu") &&
+                else if ((prev.op == "addu" || prev.op == "subu" ||
+                          prev.op == "and" || prev.op == "or") &&
                          curr.op == "move" && prev.r.at(1) == 't' &&
                          prev.r == curr.a) {
                     had_change = true;
@@ -700,11 +705,11 @@ struct CodegenFunc {
                 op.op == "sw" || op.op == "sh" || op.op == "sb") {
                 fmt::println("    {} {}, {}({})", op.op, op.r, op.a, op.b);
             } else if (op.op == "addu" || op.op == "subu" || op.op == "mul" ||
-                       op.op == "div" || op.op == "sne" || op.op == "seq" ||
-                       op.op == "slt" || op.op == "sgt" || op.op == "beq" ||
-                       op.op == "bne" || op.op == "blt" || op.op == "ble" ||
-                       op.op == "bgt" || op.op == "bge" || op.op == "addiu" ||
-                       op.op == "subiu") {
+                       op.op == "div" || op.op == "and" || op.op == "or" ||
+                       op.op == "sne" || op.op == "seq" || op.op == "slt" ||
+                       op.op == "sgt" || op.op == "beq" || op.op == "bne" ||
+                       op.op == "blt" || op.op == "ble" || op.op == "bgt" ||
+                       op.op == "bge" || op.op == "addiu" || op.op == "subiu") {
                 fmt::println("    {} {}, {}, {}", op.op, op.r, op.a, op.b);
             } else if (op.op == "move" || op.op == "move " || op.op == "li" ||
                        op.op == "la") {

@@ -323,10 +323,21 @@ struct CodegenFunc {
 
                 if (lhs.is_integral()) {
                     if (rhs.is_integral()) {
-                        // do nothing
+                        if (rhs.bytesize() < lhs.bytesize()) {
+                            // truncate lhs to fit in rhs using And
+                            append_op(node.span, Opcode::Li);
+
+                            uint64_t v = 0xFFFF'FFFF;
+                            switch (rhs.bytesize()) {
+                                case 2: v = 0xFFFF; break;
+                                case 1: v = 0xFF; break;
+                            }
+
+                            append_const(node.span, v);
+                            append_op(node.span, Opcode::And);
+                        }
 
                         // TODO: handle sign extension
-                        // TODO: handle truncation
                     } else {
                         er->report_error(
                             node.span, "can't cast {} to non-integral type {}",
@@ -640,6 +651,8 @@ void dump_module(Module const& m) {
                 case Opcode::Sub:
                 case Opcode::Mul:
                 case Opcode::Div:
+                case Opcode::And:
+                case Opcode::Or:
                 case Opcode::Seq:
                 case Opcode::Sne:
                 case Opcode::Slt:
@@ -687,6 +700,8 @@ auto fmt::formatter<yuri::ssir::Opcode>::format(yuri::ssir::Opcode c,
         case yuri::ssir::Opcode::Sub: name = "Sub"; break;
         case yuri::ssir::Opcode::Mul: name = "Mul"; break;
         case yuri::ssir::Opcode::Div: name = "Div"; break;
+        case yuri::ssir::Opcode::And: name = "And"; break;
+        case yuri::ssir::Opcode::Or: name = "Or"; break;
         case yuri::ssir::Opcode::Seq: name = "Seq"; break;
         case yuri::ssir::Opcode::Sne: name = "Sne"; break;
         case yuri::ssir::Opcode::Slt: name = "Slt"; break;
