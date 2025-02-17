@@ -42,4 +42,25 @@ struct Env {
     Env*                                                   parent{};
 };
 
+// TODO: need a way to coerce to anything
+struct TypeContext {
+    Type expected_type{};
+
+    [[nodiscard]] auto with_expected_void() const -> TypeContext {
+        return {.expected_type = Type::Void()};
+    }
+
+    [[nodiscard]] auto with_expected_bool() const -> TypeContext {
+        return {.expected_type = Type::Bool()};
+    }
+
+    [[nodiscard]] auto with_expected_type_type() const -> TypeContext {
+        return {.expected_type = Type::make_type()};
+    }
+
+    [[nodiscard]] auto with_expected_type(Type const& t) const -> TypeContext {
+        return {.expected_type = t};
+    }
+};
+
 }  // namespace yuri

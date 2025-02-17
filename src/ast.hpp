@@ -284,15 +284,20 @@ struct AstNode {
 
     constexpr auto set_type(Type const& t) -> Type { return type = t; }
 
-    auto add_types(Env& env, ErrorReporter& er) -> Type;
+    auto add_types(Env& env, TypeContext const& tc, ErrorReporter& er) -> Type;
     auto eval_to_type(Env& env, ErrorReporter& er) -> Type;
 
 private:
-    auto add_types_to_func(Env& env, ErrorReporter& er) -> Type;
-    auto add_types_to_asm_func(Env& env, ErrorReporter& er) -> Type;
-    auto add_types_to_var_decl(Env& env, ErrorReporter& er) -> Type;
-    auto add_types_to_array(Env& env, ErrorReporter& er) -> Type;
-    auto add_types_to_call(Env& env, ErrorReporter& er) -> Type;
+    auto add_types_to_func(Env& env, TypeContext const& tc, ErrorReporter& er)
+        -> Type;
+    auto add_types_to_asm_func(Env& env, TypeContext const& tc,
+                               ErrorReporter& er) -> Type;
+    auto add_types_to_var_decl(Env& env, TypeContext const& tc,
+                               ErrorReporter& er) -> Type;
+    auto add_types_to_array(Env& env, TypeContext const& tc, ErrorReporter& er)
+        -> Type;
+    auto add_types_to_call(Env& env, TypeContext const& tc, ErrorReporter& er)
+        -> Type;
 
     static constexpr auto escape_string(std::string_view s) -> std::string {
         std::string out;

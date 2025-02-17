@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <variant>
 
+#include "env.hpp"
 #include "error_reporter.hpp"
 #include "fmt/ranges.h"  // IWYU pragma: keep
 #include "fmt/std.h"     // IWYU pragma: keep
@@ -10,21 +11,23 @@
 
 namespace yuri {
 
-auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
+auto AstNode::add_types(Env& env, TypeContext const& tc, ErrorReporter& er)
+    -> Type {
     switch (kind) {
         case AstNodeKind::Nil: return set_type(Type::Void());
         case AstNodeKind::SourceFile: {
             auto e = env.child();
-            for (auto& node : children) node.add_types(e, er);
+            for (auto& node : children) node.add_types(e, tc, er);
 
             return set_type(Type::Void());
         }
-        case AstNodeKind::Func: return add_types_to_func(env, er);
-        case AstNodeKind::AsmFunc: return add_types_to_asm_func(env, er);
+        case AstNodeKind::Func: return add_types_to_func(env, tc, er);
+        case AstNodeKind::AsmFunc: return add_types_to_asm_func(env, tc, er);
         case AstNodeKind::FuncDeclArg: {
             auto const& name = std::get<std::string>(value);
 
-            auto type_anon = children.at(0).add_types(env, er);
+            auto type_anon =
+                children.at(0).add_types(env, tc.with_expected_type_type(), er);
             if (!type_anon.is_type()) {
                 er.report_error(children.at(0).span,
                                 "expected type for argument, got {}",
@@ -36,16 +39,18 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             return set_type(type);
         }
-        case AstNodeKind::VarDecl: return add_types_to_var_decl(env, er);
+        case AstNodeKind::VarDecl: return add_types_to_var_decl(env, tc, er);
         case AstNodeKind::Block: {
             auto e = env.child();
-            for (auto& node : children) node.add_types(e, er);
+            for (auto& node : children)
+                node.add_types(e, tc.with_expected_void(), er);
 
             return set_type(Type::Void());
         }
         case AstNodeKind::ExprStmt: {
             auto e = env.child();
-            auto inner = children.at(0).add_types(e, er);
+            auto inner =
+                children.at(0).add_types(e, tc.with_expected_void(), er);
 
             if (!inner.is_void() && !inner.is_err()) {
                 er.report_error(span, "discarting expression result");
@@ -57,7 +62,12 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
         }
         case AstNodeKind::ReturnStmt: {
             auto e = env.child();
-            auto inner = children.at(0).add_types(e, er);
+            auto inner = children.at(0).add_types(
+                e,
+                tc.with_expected_type(env.current_return_type
+                                          ? *env.current_return_type
+                                          : Type::Void()),
+                er);
 
             auto [ret_type, ret_span] = env.lookup_return_type();
             if (!ret_type) {
@@ -75,7 +85,8 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
         }
         case AstNodeKind::IfStmt: {
             auto e = env.child();
-            auto cond = children.at(0).add_types(e, er);
+            auto cond =
+                children.at(0).add_types(e, tc.with_expected_bool(), er);
 
             if (!cond.is_bool()) {
                 er.report_error(children.at(0).span,
@@ -83,18 +94,19 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
             }
 
             auto be = e.child();
-            children.at(1).add_types(be, er);
+            children.at(1).add_types(be, tc.with_expected_void(), er);
 
             if (!children.at(2).is_nil()) {
                 auto be = e.child();
-                children.at(2).add_types(be, er);
+                children.at(2).add_types(be, tc.with_expected_void(), er);
             }
 
             return set_type(Type::Void());
         }
         case AstNodeKind::WhileStmt: {
             auto e = env.child();
-            auto cond = children.at(0).add_types(e, er);
+            auto cond =
+                children.at(0).add_types(e, tc.with_expected_bool(), er);
 
             if (!cond.is_bool()) {
                 er.report_error(children.at(0).span,
@@ -102,13 +114,16 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
             }
 
             auto be = e.child();
-            children.at(1).add_types(be, er);
+            children.at(1).add_types(be, tc.with_expected_void(), er);
 
             return set_type(Type::Void());
         }
         case AstNodeKind::Assign: {
-            auto lhs = children.at(0).add_types(env, er);
-            auto rhs = children.at(1).add_types(env, er);
+            // NOTE: don't know what to expect from lhs, so put err.
+            auto lhs = children.at(0).add_types(
+                env, tc.with_expected_type(Type::Err()), er);
+            auto rhs =
+                children.at(1).add_types(env, tc.with_expected_type(lhs), er);
 
             if (!children.at(0).is_lvalue()) {
                 er.report_error(span, "can't assign to non-lvalue");
@@ -122,13 +137,14 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
 
             return set_type(Type::Void());
         }
-        case AstNodeKind::Array: return add_types_to_array(env, er);
+        case AstNodeKind::Array: return add_types_to_array(env, tc, er);
         case AstNodeKind::Add:
         case AstNodeKind::Sub:
         case AstNodeKind::Mul:
         case AstNodeKind::Div: {
-            auto lhs = children.at(0).add_types(env, er);
-            auto rhs = children.at(1).add_types(env, er);
+            auto lhs = children.at(0).add_types(env, tc, er);
+            auto rhs =
+                children.at(1).add_types(env, tc.with_expected_type(lhs), er);
 
             if (lhs != rhs) {
                 er.report_error(span, "incompatible types in {}", kind);
@@ -144,8 +160,9 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
         case AstNodeKind::GreaterThanEqual:
         case AstNodeKind::Equal:
         case AstNodeKind::NotEqual: {
-            auto lhs = children.at(0).add_types(env, er);
-            auto rhs = children.at(1).add_types(env, er);
+            auto lhs = children.at(0).add_types(env, tc, er);
+            auto rhs =
+                children.at(1).add_types(env, tc.with_expected_type(lhs), er);
 
             if (lhs != rhs) {
                 er.report_error(span, "incompatible types in comparison");
@@ -156,13 +173,16 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
             return set_type(Type::Bool());
         }
         case AstNodeKind::Index: {
-            auto lhs = children.at(0).add_types(env, er);
+            // TODO: we should have a way of expecting any array
+            auto lhs = children.at(0).add_types(env, tc, er);
             if (!lhs.is_array()) {
                 er.report_error(span, "can't index non-array {}", lhs);
                 return set_type(Type::Err());
             }
 
-            auto rhs = children.at(1).add_types(env, er);
+            // TODO: we should have a way of expecting any integral
+            auto rhs = children.at(1).add_types(
+                env, tc.with_expected_type(Type::Int()), er);
             if (!rhs.is_integral()) {
                 er.report_error(
                     span, "can't index array with non integer type {}", rhs);
@@ -171,19 +191,33 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
             return set_type(lhs.inner.at(0));
         }
         case AstNodeKind::Cast: {
-            auto lhs = children.at(0).add_types(env, er);
-            auto rhs = children.at(1).add_types(env, er);
+            Type ty;
 
-            if (!rhs.is_type()) {
-                er.report_error(span, "expected type in cast, got {}", rhs);
-                return set_type(Type::Err());
+            Type lhs;
+            auto rhs = Type::make_type();
+            if (children.at(1).is_id() &&
+                children.at(1).value_string() == "_") {
+                // auto-casting, cast to the current expected type
+                lhs = children.at(0).add_types(env, tc, er);
+
+                ty = tc.expected_type;
+            } else {
+                rhs = children.at(1).add_types(
+                    env, tc.with_expected_type_type(), er);
+                lhs = children.at(0).add_types(env, tc.with_expected_type(rhs),
+                                               er);
+
+                if (!rhs.is_type()) {
+                    er.report_error(span, "expected type in cast, got {}", rhs);
+                    return set_type(Type::Err());
+                }
+
+                ty = children.at(1).eval_to_type(env, er);
             }
-
-            auto ty = children.at(1).eval_to_type(env, er);
 
             return set_type(ty);
         }
-        case AstNodeKind::Call: return add_types_to_call(env, er);
+        case AstNodeKind::Call: return add_types_to_call(env, tc, er);
         case AstNodeKind::Ref: {
             if (!children.at(0).is_lvalue()) {
                 er.report_error(span, "can't take address of non l-value: {}",
@@ -191,11 +225,11 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
                 return set_type(Type::Err());
             }
 
-            auto inner = children.at(0).add_types(env, er);
+            auto inner = children.at(0).add_types(env, tc, er);
             return set_type(Type::Ptr(inner));
         } break;
         case AstNodeKind::DeRef: {
-            auto inner = children.at(0).add_types(env, er);
+            auto inner = children.at(0).add_types(env, tc, er);
             if (!inner.is_ptr()) {
                 er.report_error(span, "can't de-reference non-pointer {}",
                                 inner);
@@ -215,7 +249,7 @@ auto AstNode::add_types(Env& env, ErrorReporter& er) -> Type {
             return set_type(*type);
         }
         case AstNodeKind::Ptr: {
-            auto r = children.at(0).add_types(env, er);
+            auto r = children.at(0).add_types(env, tc, er);
 
             return set_type(Type::make_type());
         }
@@ -256,7 +290,8 @@ auto AstNode::eval_to_type(Env& env, ErrorReporter& er) -> Type {
     }
 }
 
-auto AstNode::add_types_to_func(Env& env, ErrorReporter& er) -> Type {
+auto AstNode::add_types_to_func(Env& env, TypeContext const& tc,
+                                ErrorReporter& er) -> Type {
     auto        e = env.child();
     auto const& name = std::get<std::string>(value);
 
@@ -266,10 +301,11 @@ auto AstNode::add_types_to_func(Env& env, ErrorReporter& er) -> Type {
     }();
 
     for (auto& arg : args) {
-        arg.add_types(e, er);
+        arg.add_types(e, tc, er);
     }
 
-    auto ret_anon = children.at(children.size() - 2).add_types(e, er);
+    auto ret_anon = children.at(children.size() - 2)
+                        .add_types(e, tc.with_expected_type_type(), er);
     if (!children.at(children.size() - 2).is_nil() && !ret_anon.is_type()) {
         er.report_error(children.at(children.size() - 2).span,
                         "expected type for return type, got {}", ret_anon);
@@ -284,7 +320,7 @@ auto AstNode::add_types_to_func(Env& env, ErrorReporter& er) -> Type {
 
     // function body
     auto be = e.with_return_type(&ret, ret_span);
-    children.at(children.size() - 1).add_types(be, er);
+    children.at(children.size() - 1).add_types(be, tc.with_expected_void(), er);
 
     std::vector<Type> arg_types;
     for (auto const& arg : args) {
@@ -299,7 +335,8 @@ auto AstNode::add_types_to_func(Env& env, ErrorReporter& er) -> Type {
     return set_type(ty);
 }
 
-auto AstNode::add_types_to_asm_func(Env& env, ErrorReporter& er) -> Type {
+auto AstNode::add_types_to_asm_func(Env& env, TypeContext const& tc,
+                                    ErrorReporter& er) -> Type {
     auto        e = env.child();
     auto const& name = std::get<std::string>(value);
 
@@ -309,10 +346,11 @@ auto AstNode::add_types_to_asm_func(Env& env, ErrorReporter& er) -> Type {
     }();
 
     for (auto& arg : args) {
-        arg.add_types(e, er);
+        arg.add_types(e, tc, er);
     }
 
-    auto ret_anon = children.at(children.size() - 2).add_types(e, er);
+    auto ret_anon = children.at(children.size() - 2)
+                        .add_types(e, tc.with_expected_type_type(), er);
     if (!children.at(children.size() - 2).is_nil() && !ret_anon.is_type()) {
         er.report_error(children.at(children.size() - 2).span,
                         "expected type for return type, got {}", ret_anon);
@@ -342,12 +380,14 @@ auto AstNode::add_types_to_asm_func(Env& env, ErrorReporter& er) -> Type {
     return set_type(ty);
 }
 
-auto AstNode::add_types_to_var_decl(Env& env, ErrorReporter& er) -> Type {
+auto AstNode::add_types_to_var_decl(Env& env, TypeContext const& tc,
+                                    ErrorReporter& er) -> Type {
     auto        e = env.child();
     auto const& name = std::get<std::string>(value);
 
     auto has_type_anon = !children.at(0).is_nil();
-    auto type_anon = children.at(0).add_types(e, er);
+    auto type_anon =
+        children.at(0).add_types(e, tc.with_expected_type_type(), er);
     if (has_type_anon && !type_anon.is_type()) {
         er.report_error(span, "expected type for declaration, got {}",
                         type_anon);
@@ -356,7 +396,11 @@ auto AstNode::add_types_to_var_decl(Env& env, ErrorReporter& er) -> Type {
 
     auto type =
         has_type_anon ? children.at(0).eval_to_type(e, er) : Type::Void();
-    auto init = children.at(1).add_types(e, er);
+    auto init = children.at(1).add_types(
+        e,
+        has_type_anon ? tc.with_expected_type(type)
+                      : tc.with_expected_type(Type::Err()),
+        er);
 
     if (has_type_anon && type != init) {
         er.report_error(
@@ -376,8 +420,10 @@ auto AstNode::add_types_to_var_decl(Env& env, ErrorReporter& er) -> Type {
     return set_type(type);
 }
 
-auto AstNode::add_types_to_array(Env& env, ErrorReporter& er) -> Type {
-    auto ty_node = children.at(1).add_types(env, er);
+auto AstNode::add_types_to_array(Env& env, TypeContext const& tc,
+                                 ErrorReporter& er) -> Type {
+    auto ty_node =
+        children.at(1).add_types(env, tc.with_expected_type_type(), er);
     if (!ty_node.is_type()) {
         er.report_error(children.at(1).span,
                         "expected type of array, but found {}", ty_node);
@@ -392,7 +438,9 @@ auto AstNode::add_types_to_array(Env& env, ErrorReporter& er) -> Type {
 
     size_t count{};
     if (!children.at(0).is_nil()) {
-        auto n = children.at(0).add_types(env, er);
+        // TODO: need a way to expect any integral
+        auto n = children.at(0).add_types(
+            env, tc.with_expected_type(Type::Int()), er);
         if (!n.is_integral()) {
             er.report_error(
                 children.at(0).span,
@@ -417,7 +465,7 @@ auto AstNode::add_types_to_array(Env& env, ErrorReporter& er) -> Type {
     }
 
     for (auto& item : items) {
-        auto item_type = item.add_types(env, er);
+        auto item_type = item.add_types(env, tc.with_expected_type(ty), er);
         if (ty != item_type) {
             er.report_error(item.span,
                             "expected {}, but found {} in array initialization",
@@ -428,22 +476,26 @@ auto AstNode::add_types_to_array(Env& env, ErrorReporter& er) -> Type {
     return set_type(Type::Array(ty, count));
 }
 
-auto AstNode::add_types_to_call(Env& env, ErrorReporter& er) -> Type {
-    auto callee = children.at(0).add_types(env, er);
+auto AstNode::add_types_to_call(Env& env, TypeContext const& tc,
+                                ErrorReporter& er) -> Type {
+    // TODO: need a way to specify any function
+    auto callee = children.at(0).add_types(env, tc, er);
     if (!callee.is_func()) {
         er.report_error(children.at(0).span, "can't call non-function {}",
                         callee);
         return set_type(Type::Err());
     }
 
-    std::span args = children;
-    args = args.subspan(1);
-    for (auto& arg : args) {
-        arg.add_types(env, er);
-    }
-
     std::span expected_args = callee.inner;
     expected_args = expected_args.subspan(0, expected_args.size() - 1);
+
+    std::span args = children;
+    args = args.subspan(1);
+    for (size_t i = 0; i < args.size(); i++) {
+        auto expected_ty =
+            i < expected_args.size() ? expected_args[i] : Type::Err();
+        args[i].add_types(env, tc.with_expected_type(expected_ty), er);
+    }
 
     if (args.size() != expected_args.size()) {
         er.report_error(children.at(0).span,

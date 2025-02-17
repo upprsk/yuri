@@ -21,9 +21,9 @@ enum class TypeKind {
 };
 
 struct Type {
-    TypeKind          kind;
+    TypeKind          kind = TypeKind::Err;
     std::vector<Type> inner;
-    size_t            length;
+    size_t            length = 1;
 
     [[nodiscard]] constexpr auto is_err() const -> bool {
         return kind == TypeKind::Err;

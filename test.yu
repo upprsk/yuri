@@ -5,10 +5,10 @@ func main() int {
     var a = 10 as byte;
     var aa = 42 as byte;
     var b = &a;
-    printi(b.* as int);
+    printi(b.* as _);
 
     b = &aa;
-    printi(b.* as int);
+    printi(b.* as _);
 
     return 0;
 }
