@@ -679,10 +679,11 @@ struct CodegenFunc {
                 }
 
                 //    lw tA, _
-                //    move aB, tA
-                //    lw aB, _
-                else if (prev.op == "lw" && curr.op == "move" &&
-                         prev.r.at(1) == 't' && curr.r.at(1) == 'a' &&
+                //    move B, tA
+                // -> lw B, _
+                else if ((prev.op == "lw" || prev.op == "lh" ||
+                          prev.op == "lb") &&
+                         curr.op == "move" && prev.r.at(1) == 't' &&
                          prev.r == curr.a) {
                     had_change = true;
                     output.at(i) = Op::init(prev.op, curr.r, prev.a, prev.b);
@@ -692,7 +693,9 @@ struct CodegenFunc {
                 //    move tA, B
                 //    lw tC, (tA)
                 // -> lw tC, (B)
-                else if (prev.op == "move" && curr.op == "lw" &&
+                else if (prev.op == "move" &&
+                         (curr.op == "lw" || curr.op == "lh" ||
+                          curr.op == "lb") &&
                          prev.r.at(1) == 't' && prev.r == curr.b) {
                     had_change = true;
                     output.at(i) = Op::init(curr.op, curr.r, curr.a, prev.a);

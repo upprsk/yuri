@@ -3,6 +3,12 @@ asm func print_str(s: *byte) { "li $v0, 4" "syscall" "jr $ra" }
 
 func main() int {
     var a = 10 as byte;
+    var aa = 42 as byte;
     var b = &a;
-    var c = b.*;
+    printi(b.* as int);
+
+    b = &aa;
+    printi(b.* as int);
+
+    return 0;
 }
