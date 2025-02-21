@@ -1,4 +1,8 @@
 add_library(yuri
+    error_reporter.cpp
+    error_reporter.hpp
+    span.hpp
+    span.cpp
     tokenizer.cpp
     tokenizer.hpp
 )

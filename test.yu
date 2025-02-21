@@ -1,14 +1,1 @@
-asm func printi(v: int) { "li $v0, 1" "syscall" "jr $ra" }
-asm func print_str(s: *byte) { "li $v0, 4" "syscall" "jr $ra" }
-
-func main() int {
-    var a = 10 as byte;
-    var aa = 42 as byte;
-    var b = &a;
-    printi(b.* as _);
-
-    b = &aa;
-    printi(b.* as _);
-
-    return 0;
-}
++-/*
