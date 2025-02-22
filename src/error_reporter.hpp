@@ -69,7 +69,7 @@ private:
 
     [[nodiscard]] constexpr auto find_linestart(Span s) const -> Span {
         uint32_t line_start{};
-        uint32_t line_end{};
+        uint32_t line_end = source.length();
 
         for (ssize_t i = s.begin; i >= 0; i--) {
             if (source[i] == '\n') {
