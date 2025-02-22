@@ -64,10 +64,18 @@ struct Tokenizer {
 
         auto c = peek_and_advance();
         switch (c) {
-            case '+': return mkt(TokenType::Plus);
-            case '-': return mkt(TokenType::Minus);
-            case '*': return mkt(TokenType::Star);
-            case '/': return mkt(TokenType::Slash);
+            case '+':
+                if (match('+')) return mkt(TokenType::PlusPlus);
+                return mkt(TokenType::Plus);
+            case '-':
+                if (match('-')) return mkt(TokenType::MinusMinus);
+                return mkt(TokenType::Minus);
+            case '*':
+                if (match('*')) return mkt(TokenType::StarStar);
+                return mkt(TokenType::Star);
+            case '/':
+                if (match('/')) return tokenize_comment();
+                return mkt(TokenType::Slash);
             case '0' ... '9': return tokenize_number();
             case 'a' ... 'z':
             case 'A' ... 'Z':
@@ -102,6 +110,12 @@ struct Tokenizer {
         }
 
         return mkt(TokenType::Str);
+    }
+
+    constexpr auto tokenize_comment() -> Token {
+        while (!is_at_end() && peek() != '\n') advance();
+
+        return mkt(TokenType::Comment);
     }
 
     constexpr void skip_whitespace() {

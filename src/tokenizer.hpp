@@ -11,12 +11,16 @@ namespace yuri {
 enum class TokenType {
     Err,
     Plus,
+    PlusPlus,
     Minus,
+    MinusMinus,
     Star,
+    StarStar,
     Slash,
     Int,
     Id,
     Str,
+    Comment,
     Eof,
 };
 
