@@ -16,6 +16,7 @@ enum class TokenType {
     Slash,
     Int,
     Id,
+    Str,
     Eof,
 };
 

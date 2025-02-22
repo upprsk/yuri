@@ -27,6 +27,15 @@ struct Tokenizer {
         return c;
     }
 
+    constexpr auto match(uint8_t c) -> bool {
+        if (peek() == c) {
+            advance();
+            return true;
+        }
+
+        return false;
+    }
+
     [[nodiscard]] constexpr auto span() const -> Span {
         return {.begin = start, .end = current};
     }
@@ -63,8 +72,9 @@ struct Tokenizer {
             case 'a' ... 'z':
             case 'A' ... 'Z':
             case '_': return tokenize_id();
+            case '"': return tokenize_string();
             default:
-                er->report_error(span(), "invalid character found '{}'", c);
+                er->report_error(span(), "invalid character found '{:#c}'", c);
                 return mkt(TokenType::Err);
         }
     }
@@ -79,6 +89,19 @@ struct Tokenizer {
         while (is_alpha(peek()) || is_digit(peek()) || peek() == '_') advance();
 
         return mkt(TokenType::Id);
+    }
+
+    constexpr auto tokenize_string() -> Token {
+        while (!is_at_end() && peek() != '"') {
+            if (peek() == '\\') advance();
+            advance();
+        }
+
+        if (!match('"')) {
+            er->report_error(span(), "unterminated string");
+        }
+
+        return mkt(TokenType::Str);
     }
 
     constexpr void skip_whitespace() {
@@ -126,6 +149,8 @@ auto fmt::formatter<yuri::TokenType>::format(yuri::TokenType t,
         case yuri::TokenType::Star: name = "Star"; break;
         case yuri::TokenType::Slash: name = "Slash"; break;
         case yuri::TokenType::Int: name = "Int"; break;
+        case yuri::TokenType::Id: name = "Id"; break;
+        case yuri::TokenType::Str: name = "Str"; break;
         case yuri::TokenType::Eof: name = "EOF"; break;
     }
     return formatter<string_view>::format(name, ctx);
