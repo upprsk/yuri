@@ -49,8 +49,9 @@ struct Tokenizer {
 
     auto tokenize_one() -> Token {
         skip_whitespace();
-        if (is_at_end()) return mkt(TokenType::Eof);
+
         start = current;
+        if (is_at_end()) return mkt(TokenType::Eof);
 
         auto c = peek_and_advance();
         switch (c) {
@@ -58,10 +59,26 @@ struct Tokenizer {
             case '-': return mkt(TokenType::Minus);
             case '*': return mkt(TokenType::Star);
             case '/': return mkt(TokenType::Slash);
+            case '0' ... '9': return tokenize_number();
+            case 'a' ... 'z':
+            case 'A' ... 'Z':
+            case '_': return tokenize_id();
             default:
                 er->report_error(span(), "invalid character found '{}'", c);
                 return mkt(TokenType::Err);
         }
+    }
+
+    constexpr auto tokenize_number() -> Token {
+        while (!is_at_end() && is_digit(peek())) advance();
+
+        return mkt(TokenType::Int);
+    }
+
+    constexpr auto tokenize_id() -> Token {
+        while (is_alpha(peek()) || is_digit(peek()) || peek() == '_') advance();
+
+        return mkt(TokenType::Id);
     }
 
     constexpr void skip_whitespace() {
@@ -69,6 +86,14 @@ struct Tokenizer {
     }
 
     // ------------------------------------------------------------------------
+
+    constexpr static auto is_digit(uint8_t c) -> bool {
+        return c >= '0' && c <= '9';
+    }
+
+    constexpr static auto is_alpha(uint8_t c) -> bool {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+    }
 
     constexpr static auto is_whitespace(uint8_t c) -> bool {
         return c == '\n' || c == '\r' || c == '\t' || c == ' ';
@@ -93,8 +118,6 @@ auto tokenize(std::string_view source, ErrorReporter& er)
 auto fmt::formatter<yuri::TokenType>::format(yuri::TokenType t,
                                              format_context& ctx) const
     -> format_context::iterator {
-    using T = yuri::TokenType;
-
     string_view name = "unknown";
     switch (t) {
         case yuri::TokenType::Err: name = "ERROR"; break;
@@ -102,6 +125,7 @@ auto fmt::formatter<yuri::TokenType>::format(yuri::TokenType t,
         case yuri::TokenType::Minus: name = "Minus"; break;
         case yuri::TokenType::Star: name = "Star"; break;
         case yuri::TokenType::Slash: name = "Slash"; break;
+        case yuri::TokenType::Int: name = "Int"; break;
         case yuri::TokenType::Eof: name = "EOF"; break;
     }
     return formatter<string_view>::format(name, ctx);

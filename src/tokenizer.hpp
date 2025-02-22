@@ -14,6 +14,8 @@ enum class TokenType {
     Minus,
     Star,
     Slash,
+    Int,
+    Id,
     Eof,
 };
 
