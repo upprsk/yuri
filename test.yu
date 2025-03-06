@@ -1,2 +1,1 @@
-+-/ * 1243 abc "test it!"
-++ -- ** // comment
+return 1 + 2 - 3;
