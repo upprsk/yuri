@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 
 #include "fmt/base.h"
 
@@ -9,6 +10,15 @@ namespace yuri {
 struct Span {
     uint32_t begin;
     uint32_t end;
+
+    [[nodiscard]] constexpr auto extend(Span s) const -> Span {
+        return {.begin = begin, .end = s.end};
+    }
+
+    [[nodiscard]] constexpr auto src(std::string_view source) const
+        -> std::string_view {
+        return source.substr(begin, end - begin);
+    }
 };
 
 }  // namespace yuri

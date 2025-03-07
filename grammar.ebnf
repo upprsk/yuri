@@ -36,14 +36,14 @@ assign      ::= expr ("=" | "+=" | "-=" | "*=" | "/=") expr ";" ;
 
 expr ::= comparison ;
 
-comparison     ::= additive { ("<" | "<=" | ">" | ">=" | "==" | "!=") additive } ;
-additive       ::= multiplicative { ("+" | "-") multiplicative } ;
-multiplicative ::= cast { ("*" | "/") cast } ;
-cast           ::= call { "as" call } ;
-call           ::= primary [ "(" call_args ")" ]
-                 | primary "[" expr "]"
-                 | primary ".*"
-                 ;
+comparison ::= term { ("<" | "<=" | ">" | ">=" | "==" | "!=") term } ;
+term       ::= factor { ("+" | "-") factor } ;
+factor     ::= cast { ("*" | "/") cast } ;
+cast       ::= call { "as" call } ;
+call       ::= primary [ "(" call_args ")" ]
+             | primary "[" expr "]"
+             | primary ".*"
+             ;
 
 call_args   ::= expr [ "," call_args ] ;
 array       ::= "[" expr "]" expr "{" array_items "}" ;

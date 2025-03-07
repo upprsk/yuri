@@ -6,6 +6,7 @@
 #include "error_reporter.hpp"
 #include "fmt/base.h"
 #include "fmt/format.h"
+#include "parser.hpp"
 #include "tokenizer.hpp"
 
 using yuri::ErrorReporter;
@@ -46,9 +47,8 @@ auto main(int argc, char** argv) -> int {
         ErrorReporter er{*contents, argv[1]};
 
         auto tokens = tokenize(*contents, er);
-        for (auto const& t : tokens) {
-            er.report_note(t.span, "found token: {}", t);
-        }
+        auto ast = yuri::parse(tokens, *contents, er);
+        fmt::println("{}", ast);
 
         return 0;
     }
