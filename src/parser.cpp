@@ -154,6 +154,16 @@ struct Parser {
     }
 
     auto parse_primary() -> AstNode {
+        if (match(TokenType::Lparen)) {
+            auto s = prev_span();
+            auto child = parse_expr();
+
+            if (!consume(TokenType::Rparen))
+                return AstNode::Error(s.extend(child.span));
+
+            return child;
+        }
+
         if (match(TokenType::Int)) {
             auto s = prev_span();
             auto str = s.src(source);
