@@ -79,12 +79,12 @@ struct Tokenizer {
             case '/':
                 if (match('/')) return tokenize_comment();
                 return mkt(TokenType::Slash);
-            case '0' ... '9': return tokenize_number();
-            case 'a' ... 'z':
-            case 'A' ... 'Z':
             case '_': return tokenize_id();
             case '"': return tokenize_string();
             default:
+                if (is_digit(c)) return tokenize_number();
+                if (is_alpha(c)) return tokenize_id();
+
                 er->report_error(span(), "invalid character found '{:#c}'", c);
                 return mkt(TokenType::Err);
         }
