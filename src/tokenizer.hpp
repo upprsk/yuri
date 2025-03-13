@@ -10,6 +10,8 @@ namespace yuri {
 
 enum class TokenType {
     Err,
+    Lparen,
+    Rparen,
     Semi,
     Plus,
     PlusPlus,
