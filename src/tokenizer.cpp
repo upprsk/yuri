@@ -64,6 +64,8 @@ struct Tokenizer {
 
         auto c = peek_and_advance();
         switch (c) {
+            case '=': return mkt(TokenType::Equal);
+            case ':': return mkt(TokenType::Colon);
             case ';': return mkt(TokenType::Semi);
             case '(': return mkt(TokenType::Lparen);
             case ')': return mkt(TokenType::Rparen);
@@ -161,6 +163,8 @@ auto fmt::formatter<yuri::TokenType>::format(yuri::TokenType t,
     string_view name = "unknown";
     switch (t) {
         case yuri::TokenType::Err: name = "ERROR"; break;
+        case yuri::TokenType::Equal: name = "Equal"; break;
+        case yuri::TokenType::Colon: name = "Colon"; break;
         case yuri::TokenType::Semi: name = "Semi"; break;
         case yuri::TokenType::Lparen: name = "Lparen"; break;
         case yuri::TokenType::Rparen: name = "Rparen"; break;
