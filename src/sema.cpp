@@ -131,7 +131,7 @@ struct Sema {
                 return v->val;
             }
 
-            default: PANIC("invalid node for `sema_stmt`", node.kind);
+            default: PANIC("invalid node for `sema_expr`", node.kind);
         }
     }
 
