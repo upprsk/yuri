@@ -48,6 +48,10 @@ public:
         return error_count > 0;
     }
 
+    [[nodiscard]] constexpr auto get_source_path() const -> std::string_view {
+        return source_path;
+    }
+
     // -----------------------------------------------------------------------
 
 private:

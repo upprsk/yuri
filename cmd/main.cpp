@@ -7,6 +7,7 @@
 #include "fmt/base.h"
 #include "fmt/format.h"
 #include "parser.hpp"
+#include "sema.hpp"
 #include "tokenizer.hpp"
 
 using yuri::ErrorReporter;
@@ -49,6 +50,10 @@ auto main(int argc, char** argv) -> int {
         auto tokens = tokenize(*contents, er);
         auto ast = yuri::parse(tokens, *contents, er);
         fmt::println("{}", ast);
+
+        auto fn = yuri::sema(er, ast);
+        fn.disasm(stdout);
+        fn.free();
 
         return 0;
     }

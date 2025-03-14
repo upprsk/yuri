@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -18,6 +19,7 @@ enum class AstNodeKind {
     ReturnStmt,
     ExprStmt,
 
+    Block,
     SourceFile,
 
     Add,
@@ -36,6 +38,22 @@ struct AstNode {
     Span                                                span;
     std::vector<AstNode>                                children;
     std::variant<std::monostate, uint64_t, std::string> value;
+
+    [[nodiscard]] constexpr auto value_string() const -> std::string_view {
+        return std::get<std::string>(value);
+    }
+
+    [[nodiscard]] constexpr auto value_uint64() const -> uint64_t {
+        return std::get<std::uint64_t>(value);
+    }
+
+    [[nodiscard]] constexpr auto first() const -> AstNode const* {
+        return &children.at(0);
+    }
+
+    [[nodiscard]] constexpr auto second() const -> AstNode const* {
+        return &children.at(1);
+    }
 
     static auto Error(Span s) -> AstNode {
         return {
@@ -71,6 +89,15 @@ struct AstNode {
             .kind = AstNodeKind::ExprStmt,
             .span = s,
             .children = {child},
+            .value = {},
+        };
+    }
+
+    static auto Block(Span s, std::vector<AstNode> children) -> AstNode {
+        return {
+            .kind = AstNodeKind::Block,
+            .span = s,
+            .children = children,
             .value = {},
         };
     }
