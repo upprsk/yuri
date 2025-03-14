@@ -4,6 +4,7 @@ stmt ::= return_stmt
        | var_decl
        | expr_stmt
        | assign
+       | if_stmt
        ;
 
 var_decl ::= "var" ID [ ":" expr ] "=" expr ";" ;
@@ -11,6 +12,10 @@ var_decl ::= "var" ID [ ":" expr ] "=" expr ";" ;
 return_stmt ::= "return" expr ";" ;
 expr_stmt   ::= expr ";" ;
 assign      ::= primary "=" expr ";" ;
+
+if_stmt ::= "if" expr block [ "else" block ] ;
+
+block ::= "{" { stmt } "}" ;
 
 expr ::= term ;
 

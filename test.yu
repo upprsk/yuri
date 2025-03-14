@@ -1,6 +1,14 @@
-var a = 42;
-var b = a + 27; // 69
+if 1 {}
 
-a = 2 * (1 + 8 / 2);
+return 0;
 
-return b * a;
+// var a = 42;
+// var b = a + 27; // 69
+// 
+// if 1 {
+//     a = 2 * (1 + 8 / 2);
+// } else {
+//     a = 2;
+// }
+// 
+// return b * a;

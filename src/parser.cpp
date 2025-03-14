@@ -114,6 +114,7 @@ struct Parser {
 
     auto parse_stmt() -> AstNode {
         if (check("var")) return parse_var_decl();
+        if (check("if")) return parse_if_stmt();
         if (check("return")) return parse_return_stmt();
 
         return parse_expr_stmt();
@@ -165,6 +166,42 @@ struct Parser {
         if (!consume(TokenType::Semi)) return AstNode::Error(prev_span());
 
         return AstNode::ExprStmt(lhs.span.extend(prev_span()), lhs);
+    }
+
+    auto parse_if_stmt() -> AstNode {
+        auto s = span();
+        if (!consume("if")) return AstNode::Error(prev_span());
+
+        auto cond = parse_expr();
+        auto wt = parse_block();
+        auto wf = AstNode::Empty(s);
+
+        auto span = wt.span;
+
+        if (match("else")) {
+            wf = parse_block();
+            span = wf.span;
+        }
+
+        return AstNode::IfStmt(span, cond, wt, wf);
+    }
+
+    auto parse_block() -> AstNode {
+        if (!consume(TokenType::Lbrace)) return AstNode::Error(prev_span());
+
+        std::vector<AstNode> stmts;
+
+        while (!check(TokenType::Rbrace)) {
+            stmts.push_back(parse_stmt());
+        }
+
+        if (!consume(TokenType::Rbrace)) return AstNode::Error(prev_span());
+
+        return AstNode::Block(
+            stmts.empty()
+                ? prev_span()
+                : stmts.at(0).span.extend(stmts.at(stmts.size() - 1).span),
+            stmts);
     }
 
     // ------------------------------------------------------------------------

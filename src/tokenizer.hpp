@@ -12,6 +12,8 @@ enum class TokenType {
     Err,
     Lparen,
     Rparen,
+    Lbrace,
+    Rbrace,
     Equal,
     Colon,
     Semi,

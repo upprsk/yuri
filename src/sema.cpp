@@ -80,9 +80,10 @@ struct Sema {
                 sema_return_stmt(ctx, env, node);
                 break;
             case AstNodeKind::Assign: sema_assign(ctx, env, node); break;
+            case AstNodeKind::IfStmt: sema_if_stmt(ctx, env, node); break;
 
-            case AstNodeKind::ExprStmt:
-            case AstNodeKind::Block:
+            case AstNodeKind::ExprStmt: PANIC("not implemented", node.kind);
+            case AstNodeKind::Block: sema_block(ctx, env, node); break;
 
             default: PANIC("invalid node for `sema_stmt`", node.kind);
         }
@@ -189,6 +190,41 @@ struct Sema {
         push_inst(ir::InstKind::Ret, child->type, child);
     }
 
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+    void sema_if_stmt(Context const& ctx, Env& env, AstNode const& node) {
+        ASSERT(node.kind == AstNodeKind::IfStmt);
+
+        auto has_else = node.third()->kind != AstNodeKind::Empty;
+
+        auto cond = sema_expr(ctx, env, *node.first());
+
+        auto wt = alloc_block();
+        auto wf = alloc_block();
+        auto after = wf;
+
+        push_inst_branch(wt, wf, cond);
+
+        // sema the then branch
+        set_current_block(wt);
+        sema_block(ctx, env, *node.second());
+
+        // in case we have an else, there is a need to jump over it
+        if (has_else) {
+            after = alloc_block();
+        }
+
+        push_inst_jump(after);
+
+        if (has_else) {
+            set_current_block(wf);
+            sema_block(ctx, env, *node.third());
+
+            push_inst_jump(after);
+        }
+
+        set_current_block(after);
+    }
+
     // ------------------------------------------------------------------------
 
     auto push_inst_const(ir::InstType ty, uint64_t v) -> ir::Inst* {
@@ -197,9 +233,23 @@ struct Sema {
         return i;
     }
 
+    auto push_inst_branch(uint16_t wt, uint16_t wf, auto&&... v) -> ir::Inst* {
+        auto i = fn.alloc_inst(ir::InstKind::Branch, ir::InstType::Err, wt, wf,
+                               std::vector<ir::Inst*>{v...});
+        get_current_block()->body.push_back(i);
+        return i;
+    }
+
+    auto push_inst_jump(uint16_t b) -> ir::Inst* {
+        auto i = fn.alloc_inst(ir::InstKind::Jump, ir::InstType::Err, b, 0,
+                               std::vector<ir::Inst*>{});
+        get_current_block()->body.push_back(i);
+        return i;
+    }
+
     auto push_inst(ir::InstKind kind, ir::InstType ty, auto&&... v)
         -> ir::Inst* {
-        auto i = fn.alloc_inst(kind, ty, 0, std::vector<ir::Inst*>{v...});
+        auto i = fn.alloc_inst(kind, ty, 0, 0, std::vector<ir::Inst*>{v...});
         get_current_block()->body.push_back(i);
         return i;
     }
@@ -207,6 +257,14 @@ struct Sema {
     auto get_current_block() -> ir::Block* {
         ASSERT(fn.blocks.size() > 0);
         return &fn.blocks.at(current_block);
+    }
+
+    void set_current_block(uint16_t blk) { current_block = blk; }
+
+    auto alloc_block() -> uint16_t {
+        auto sz = fn.blocks.size();
+        fn.blocks.emplace_back();
+        return sz;
     }
 
     // ------------------------------------------------------------------------

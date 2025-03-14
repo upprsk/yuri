@@ -23,6 +23,8 @@ enum class InstKind : uint16_t {
     Umul,
     Udiv,
 
+    Branch,
+    Jump,
     Ret,
 };
 
@@ -42,7 +44,8 @@ struct Inst {
     InstId             id;
     InstKind           kind{};
     InstType           type{};
-    uint32_t           offset;
+    uint32_t           offset{};
+    uint32_t           branch{};
     std::vector<Inst*> args;
 
     [[nodiscard]] constexpr auto is_oneof(auto&&... kinds) const -> bool {
@@ -53,8 +56,6 @@ struct Inst {
         *this = {
             .id = id,
             .kind = InstKind::Nop,
-            .type = type,
-            .offset = offset,
             .args = {},
         };
     }
@@ -74,7 +75,6 @@ struct Inst {
             .id = id,
             .kind = InstKind::Fwd,
             .type = type,
-            .offset = 0,
             .args = {fwd},
         };
     }
@@ -90,7 +90,8 @@ struct Inst {
     }
 
     [[nodiscard]] constexpr auto is_branch() const -> bool {
-        return kind == InstKind::Ret;
+        return kind == InstKind::Ret || kind == InstKind::Jump ||
+               kind == InstKind::Branch;
     }
 
     [[nodiscard]] constexpr auto is_const() const -> bool {

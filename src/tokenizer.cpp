@@ -69,6 +69,8 @@ struct Tokenizer {
             case ';': return mkt(TokenType::Semi);
             case '(': return mkt(TokenType::Lparen);
             case ')': return mkt(TokenType::Rparen);
+            case '{': return mkt(TokenType::Lbrace);
+            case '}': return mkt(TokenType::Rbrace);
             case '+':
                 if (match('+')) return mkt(TokenType::PlusPlus);
                 return mkt(TokenType::Plus);
@@ -168,6 +170,8 @@ auto fmt::formatter<yuri::TokenType>::format(yuri::TokenType t,
         case yuri::TokenType::Semi: name = "Semi"; break;
         case yuri::TokenType::Lparen: name = "Lparen"; break;
         case yuri::TokenType::Rparen: name = "Rparen"; break;
+        case yuri::TokenType::Lbrace: name = "Lbrace"; break;
+        case yuri::TokenType::Rbrace: name = "Rbrace"; break;
         case yuri::TokenType::Plus: name = "Plus"; break;
         case yuri::TokenType::Minus: name = "Minus"; break;
         case yuri::TokenType::Star: name = "Star"; break;

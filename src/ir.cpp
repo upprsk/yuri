@@ -25,7 +25,7 @@ auto Func::alloc_const(InstType ty, uint64_t v) -> uint32_t {
 
 auto Func::alloc_inst_const(InstType ty, uint64_t v) -> Inst* {
     auto idx = alloc_const(ty, v);
-    return alloc_inst(InstKind::Const, ty, idx, std::vector<Inst*>{});
+    return alloc_inst(InstKind::Const, ty, idx, 0, std::vector<Inst*>{});
 }
 
 void Func::free() {
@@ -46,6 +46,16 @@ void Func::disasm(FILE* out) const {
                              Const{.ty = inst->type,
                                    .value = get_const_value(inst->offset)},
                              inst->offset);
+            } else if (inst->kind == InstKind::Jump) {
+                fmt::println(out, "{} = {} {}", inst->id, inst->kind,
+                             inst->offset);
+            } else if (inst->kind == InstKind::Branch) {
+                fmt::println(
+                    out, "{} = {} {}, {}, {}", inst->id, inst->kind,
+                    fmt::join(inst->args | std::ranges::views::transform(
+                                               [](auto i) { return i->id; }),
+                              ", "),
+                    inst->offset, inst->branch);
             } else {
                 fmt::println(
                     out, "{} = {} {} {}", inst->id, inst->type, inst->kind,
@@ -74,6 +84,8 @@ auto fmt::formatter<yuri::ir::InstKind>::format(yuri::ir::InstKind t,
         case yuri::ir::InstKind::Idiv: name = "Idiv"; break;
         case yuri::ir::InstKind::Umul: name = "Umul"; break;
         case yuri::ir::InstKind::Udiv: name = "Udiv"; break;
+        case yuri::ir::InstKind::Branch: name = "Branch"; break;
+        case yuri::ir::InstKind::Jump: name = "Jump"; break;
         case yuri::ir::InstKind::Ret: name = "Ret"; break;
     }
     return formatter<string_view>::format(name, ctx);
@@ -105,6 +117,11 @@ auto fmt::formatter<yuri::ir::Inst>::format(yuri::ir::Inst  i,
     if (i.kind == yuri::ir::InstKind::Const)
         return fmt::format_to(ctx.out(), "{} = {} {} [{}]", i.id, i.type,
                               i.kind, i.offset);
+    if (i.kind == yuri::ir::InstKind::Jump)
+        return fmt::format_to(ctx.out(), "{} {}", i.kind, i.offset);
+    if (i.kind == yuri::ir::InstKind::Branch)
+        return fmt::format_to(ctx.out(), "{} {}, {}", i.kind, i.offset,
+                              i.branch);
 
     return fmt::format_to(ctx.out(), "{} = {} {} {}", i.id, i.type, i.kind,
                           fmt::join(i.args | std::ranges::views::transform(
