@@ -1,11 +1,22 @@
-source_file ::= return_stmt ;
+source_file ::= { stmt } ;
+
+stmt ::= return_stmt
+       | var_decl
+       | expr_stmt
+       ;
+
+var_decl ::= "var" ID [ ":" expr ] "=" expr ";" ;
 
 return_stmt ::= "return" expr ";" ;
+expr_stmt   ::= expr ";" ;
 
 expr ::= term ;
 
 term    ::= factor { ("+" | "-") factor } ;
 factor  ::= primary { ("*" | "/") primary } ;
+unary   ::= "-" unary
+          | primary
+          ;
 primary ::= "(" expr ")"
           | INT
           | ID

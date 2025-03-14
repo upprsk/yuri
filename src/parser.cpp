@@ -85,7 +85,46 @@ struct Parser {
 
     // ------------------------------------------------------------------------
 
-    auto parse_source_file() -> AstNode { return parse_return_stmt(); }
+    auto parse_source_file() -> AstNode {
+        std::vector<AstNode> stmts;
+
+        while (!is_at_end()) {
+            stmts.push_back(parse_stmt());
+        }
+
+        return AstNode::SourceFile(
+            stmts.empty()
+                ? prev_span()
+                : stmts.at(0).span.extend(stmts.at(stmts.size() - 1).span),
+            stmts);
+    }
+
+    auto parse_stmt() -> AstNode {
+        if (check("var")) return parse_var_decl();
+        if (check("return")) return parse_return_stmt();
+
+        return parse_expr_stmt();
+    }
+
+    auto parse_var_decl() -> AstNode {
+        auto s = span();
+        if (!consume("var")) return AstNode::Error(s);
+
+        auto name_span = span();
+        if (!consume(TokenType::Id)) return AstNode::Error(s);
+
+        auto name = std::string{name_span.src(source)};
+
+        auto type = AstNode::Empty(s.extend(prev_span()));
+        if (match(TokenType::Colon)) type = parse_expr();
+
+        if (!consume(TokenType::Equal)) return AstNode::Error(prev_span());
+        auto init = parse_expr();
+
+        if (!consume(TokenType::Semi)) return AstNode::Error(prev_span());
+
+        return AstNode::VarDecl(s.extend(prev_span()), name, type, init);
+    }
 
     auto parse_return_stmt() -> AstNode {
         auto s = span();
@@ -97,6 +136,14 @@ struct Parser {
             return AstNode::Error(s.extend(prev_span()));
 
         return AstNode::ReturnStmt(s.extend(prev_span()), child);
+    }
+
+    auto parse_expr_stmt() -> AstNode {
+        auto child = parse_expr();
+
+        if (!consume(TokenType::Semi)) return AstNode::Error(prev_span());
+
+        return AstNode::ReturnStmt(child.span.extend(prev_span()), child);
     }
 
     // ------------------------------------------------------------------------

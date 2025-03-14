@@ -11,8 +11,14 @@ namespace yuri {
 
 enum class AstNodeKind {
     Err,
+    Empty,
+
+    VarDecl,
 
     ReturnStmt,
+    ExprStmt,
+
+    SourceFile,
 
     Add,
     Sub,
@@ -36,11 +42,44 @@ struct AstNode {
             .kind = AstNodeKind::Err, .span = s, .children = {}, .value = {}};
     }
 
+    static auto Empty(Span s = {}) -> AstNode {
+        return {
+            .kind = AstNodeKind::Empty, .span = s, .children = {}, .value = {}};
+    }
+
+    static auto VarDecl(Span s, std::string name, AstNode type, AstNode init)
+        -> AstNode {
+        return {
+            .kind = AstNodeKind::VarDecl,
+            .span = s,
+            .children = {type, init},
+            .value = {name},
+        };
+    }
+
     static auto ReturnStmt(Span s, AstNode child) -> AstNode {
         return {
             .kind = AstNodeKind::ReturnStmt,
             .span = s,
             .children = {child},
+            .value = {},
+        };
+    }
+
+    static auto ExprStmt(Span s, AstNode child) -> AstNode {
+        return {
+            .kind = AstNodeKind::ExprStmt,
+            .span = s,
+            .children = {child},
+            .value = {},
+        };
+    }
+
+    static auto SourceFile(Span s, std::vector<AstNode> children) -> AstNode {
+        return {
+            .kind = AstNodeKind::SourceFile,
+            .span = s,
+            .children = children,
             .value = {},
         };
     }
