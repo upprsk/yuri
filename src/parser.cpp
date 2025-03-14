@@ -34,7 +34,11 @@ struct Parser {
     }
 
     constexpr void advance() {
-        if (!is_at_end()) current++;
+        if (!is_at_end()) {
+            do {
+                current++;
+            } while (check(TokenType::Comment));
+        }
     }
 
     [[nodiscard]] constexpr auto peek_and_advance() -> Token {
@@ -85,16 +89,23 @@ struct Parser {
         return false;
     }
 
+    void skip_comments() {
+        while (check(TokenType::Comment)) advance();
+    }
+
     // ------------------------------------------------------------------------
 
     auto parse_source_file() -> AstNode {
+        skip_comments();
+
         std::vector<AstNode> stmts;
 
         while (!is_at_end()) {
             stmts.push_back(parse_stmt());
         }
 
-        return AstNode::SourceFile(
+        // NOTE: using block here
+        return AstNode::Block(
             stmts.empty()
                 ? prev_span()
                 : stmts.at(0).span.extend(stmts.at(stmts.size() - 1).span),
