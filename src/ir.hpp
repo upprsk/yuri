@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "fmt/base.h"
+#include "fmt/format.h"
 
 namespace yuri::ir {
 
@@ -191,9 +192,26 @@ struct fmt::formatter<yuri::ir::Inst> {
 
 template <>
 struct fmt::formatter<yuri::ir::Const> {
+    enum Flags {
+        FlagNone = 0,
+        FlagSigned,
+        FlagUnsigned,
+    };
+
+    Flags flag = FlagNone;
+
     constexpr auto parse(format_parse_context& ctx)
         -> format_parse_context::iterator {
-        return ctx.begin();
+        auto it = ctx.begin();
+        if (*it == 'd') {
+            flag = FlagSigned;
+            it++;
+        } else if (*it == 'u') {
+            flag = FlagUnsigned;
+            it++;
+        }
+
+        return it;
     }
 
     auto format(yuri::ir::Const i, format_context& ctx) const

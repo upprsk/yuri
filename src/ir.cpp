@@ -36,12 +36,12 @@ void Func::free() {
 
 void Func::disasm(FILE* out) const {
     fmt::println(out, "func @{}()", name);
-    fmt::println(out, "; consts: [{}]", fmt::join(consts, ", "));
+    fmt::println(out, "; consts: [{:d}]", fmt::join(consts, ", "));
 
     for (auto const& bb : blocks) {
         for (auto const& inst : bb.body) {
             if (inst->kind == yuri::ir::InstKind::Const) {
-                fmt::println(out, "{} = {} {} {} [{}]", inst->id, inst->type,
+                fmt::println(out, "{} = {} {} {:d} [{}]", inst->id, inst->type,
                              inst->kind,
                              Const{.ty = inst->type,
                                    .value = get_const_value(inst->offset)},
@@ -116,6 +116,37 @@ auto fmt::formatter<yuri::ir::Const>::format(yuri::ir::Const i,
                                              format_context& ctx) const
     -> format_context::iterator {
     auto [ty, v] = i;
+
+    if (flag == FlagSigned) {
+        switch (ty) {
+            case yuri::ir::InstType::Byte:
+                return fmt::format_to(ctx.out(), "{}", static_cast<int8_t>(v));
+            case yuri::ir::InstType::Half:
+                return fmt::format_to(ctx.out(), "{}", static_cast<int16_t>(v));
+            case yuri::ir::InstType::Word:
+                return fmt::format_to(ctx.out(), "{}", static_cast<int32_t>(v));
+            case yuri::ir::InstType::Long:
+                return fmt::format_to(ctx.out(), "{}", static_cast<int64_t>(v));
+            default: UNREACHABLE("invalid type for constant");
+        }
+    }
+
+    if (flag == FlagUnsigned) {
+        switch (ty) {
+            case yuri::ir::InstType::Byte:
+                return fmt::format_to(ctx.out(), "{}", static_cast<uint8_t>(v));
+            case yuri::ir::InstType::Half:
+                return fmt::format_to(ctx.out(), "{}",
+                                      static_cast<uint16_t>(v));
+            case yuri::ir::InstType::Word:
+                return fmt::format_to(ctx.out(), "{}",
+                                      static_cast<uint32_t>(v));
+            case yuri::ir::InstType::Long:
+                return fmt::format_to(ctx.out(), "{}", v);
+            default: UNREACHABLE("invalid type for constant");
+        }
+    }
+
     switch (ty) {
         case yuri::ir::InstType::Byte:
             return fmt::format_to(ctx.out(), "{}/{}", static_cast<uint8_t>(v),
