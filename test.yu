@@ -1,11 +1,6 @@
-var a = 1;
-var b = 2;
-var c = 3;
-var d = 4;
+var a = 42;
+var b = a + 27; // 69
 
-return (b * c) - d - -b;
+a = 2 * (1 + 8 / 2);
 
-// var x = 10;
-// return x * 2 - x;
-
-// return 13 - 3 * -2; // 19
+return b * a;

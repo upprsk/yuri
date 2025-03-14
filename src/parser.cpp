@@ -152,7 +152,15 @@ struct Parser {
     }
 
     auto parse_expr_stmt() -> AstNode {
-        auto child = parse_expr();
+        auto lhs = parse_expr();
+
+        if (lhs.is_lvalue() && match(TokenType::Equal)) {
+            auto rhs = parse_expr();
+
+            if (!consume(TokenType::Semi)) return AstNode::Error(prev_span());
+
+            return AstNode::Assign(lhs.span.extend(rhs.span), lhs, rhs);
+        }
 
         if (!consume(TokenType::Semi)) return AstNode::Error(prev_span());
 

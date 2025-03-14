@@ -21,13 +21,25 @@ namespace yuri {
 struct Decl {
     std::string name;
     ir::Inst*   val;
+
+    uint16_t block;
+    uint16_t generation;
 };
 
 struct Env {
     constexpr auto child() -> Env { return {.parent = this, .decls = {}}; }
 
-    void define(std::string name, ir::Inst* val) {
-        decls.push_back({.name = name, .val = val});
+    void define_assign(Decl const& decl, ir::Inst* val, uint16_t block) {
+        define(decl.name, val, block, decl.generation + 1);
+    }
+
+    void define(std::string name, ir::Inst* val, uint16_t block, uint16_t gen) {
+        decls.push_back({
+            .name = name,
+            .val = val,
+            .block = block,
+            .generation = gen,
+        });
     }
 
     [[nodiscard]] auto lookup(std::string_view name) -> Decl* {
@@ -67,6 +79,8 @@ struct Sema {
             case AstNodeKind::ReturnStmt:
                 sema_return_stmt(ctx, env, node);
                 break;
+            case AstNodeKind::Assign: sema_assign(ctx, env, node); break;
+
             case AstNodeKind::ExprStmt:
             case AstNodeKind::Block:
 
@@ -132,13 +146,40 @@ struct Sema {
         }
     }
 
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
     void sema_var_decl(Context const& ctx, Env& env, AstNode const& node) {
         ASSERT(node.kind == AstNodeKind::VarDecl);
         ASSERT(node.children.at(0).kind == AstNodeKind::Empty,
                "explicit type in decl has not been implemented");
 
         auto init = sema_expr(ctx, env, node.children.at(1));
-        env.define(std::string{node.value_string()}, init);
+        env.define(std::string{node.value_string()}, init, current_block, 0);
+    }
+
+    // NOLINTNEXTLINE(readability-function-cognitive-complexity)
+    void sema_assign(Context const& ctx, Env& env, AstNode const& node) {
+        ASSERT(node.kind == AstNodeKind::Assign);
+        ASSERT(node.first()->is_lvalue());
+
+        if (node.first()->kind == AstNodeKind::Id) {
+            auto decl = env.lookup(node.first()->value_string());
+            if (!decl) {
+                er->report_error(node.span, "undefined identifier: '{}'",
+                                 node.value_string());
+                return;
+            }
+
+            // FIXME: this is where we might need to handle phis
+            ASSERT(decl->block == current_block);
+
+            auto rhs = sema_expr(ctx, env, *node.second());
+
+            // an assign just shadows the previous declaration
+            env.define_assign(*decl, rhs, current_block);
+            return;
+        }
+
+        UNREACHABLE("node kind not handled as lhs", node.first()->kind);
     }
 
     void sema_return_stmt(Context const& ctx, Env& env, AstNode const& node) {
@@ -171,7 +212,7 @@ struct Sema {
     // ------------------------------------------------------------------------
 
     ir::Func       fn{};
-    uint32_t       current_block{};
+    uint16_t       current_block{};
     ErrorReporter* er;
 };
 

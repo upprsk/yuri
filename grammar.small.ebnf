@@ -3,12 +3,14 @@ source_file ::= { stmt } ;
 stmt ::= return_stmt
        | var_decl
        | expr_stmt
+       | assign
        ;
 
 var_decl ::= "var" ID [ ":" expr ] "=" expr ";" ;
 
 return_stmt ::= "return" expr ";" ;
 expr_stmt   ::= expr ";" ;
+assign      ::= primary "=" expr ";" ;
 
 expr ::= term ;
 
