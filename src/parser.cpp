@@ -7,6 +7,7 @@
 
 #include "ast.hpp"
 #include "error_reporter.hpp"
+#include "libassert/assert.hpp"
 #include "span.hpp"
 #include "tokenizer.hpp"
 
@@ -18,6 +19,7 @@ struct Parser {
     }
 
     [[nodiscard]] constexpr auto peek_prev() const -> Token {
+        ASSERT(!tokens.empty());
         return tokens[current - 1];
     }
 
