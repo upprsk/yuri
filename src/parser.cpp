@@ -156,7 +156,7 @@ struct Parser {
 
         if (!consume(TokenType::Semi)) return AstNode::Error(prev_span());
 
-        return AstNode::ReturnStmt(child.span.extend(prev_span()), child);
+        return AstNode::ExprStmt(lhs.span.extend(prev_span()), lhs);
     }
 
     // ------------------------------------------------------------------------
