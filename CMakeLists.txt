@@ -18,12 +18,13 @@ FetchContent_Declare(
   GIT_TAG        11.1.3)
 FetchContent_MakeAvailable(fmt)
 
+include(FetchContent)
 FetchContent_Declare(
-  cpptrace
-  GIT_REPOSITORY https://github.com/jeremy-rifkin/cpptrace.git
-  GIT_TAG        v0.7.5
+  libassert
+  GIT_REPOSITORY https://github.com/jeremy-rifkin/libassert.git
+  GIT_TAG        v2.1.5 # <HASH or TAG>
 )
-FetchContent_MakeAvailable(cpptrace)
+FetchContent_MakeAvailable(libassert)
 
 add_subdirectory(src)
 add_subdirectory(cmd)
