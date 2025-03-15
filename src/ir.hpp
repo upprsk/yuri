@@ -63,6 +63,9 @@ struct Inst {
         return extra_b;
     }
 
+    constexpr void branch_wt_set(uint16_t v) { extra_a = v; }
+    constexpr void branch_wf_set(uint16_t v) { extra_b = v; }
+
     [[nodiscard]] constexpr auto is_oneof(auto&&... kinds) const -> bool {
         return ((kind == kinds) || ...);
     }
@@ -81,6 +84,16 @@ struct Inst {
             .kind = InstKind::Const,
             .type = type,
             .extra_a = offset,
+            .args = {},
+        };
+    }
+
+    constexpr void transmute_to_jump(uint16_t target) {
+        *this = {
+            .id = id,
+            .kind = InstKind::Jump,
+            .type = type,
+            .extra_a = target,
             .args = {},
         };
     }
@@ -124,7 +137,13 @@ struct Inst {
 
 struct Block {
     [[nodiscard]] auto successors() const -> std::vector<uint16_t>;
+    [[nodiscard]] auto control() const -> Inst* {
+        return body.at(body.size() - 1);
+    }
 
+    // this stores the index of the block. It should be update to match the
+    // actual index when blocks are moved.
+    uint16_t           id;
     std::vector<Inst*> body;
 };
 

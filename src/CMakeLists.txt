@@ -11,6 +11,8 @@ add_library(yuri
     sema.hpp
     span.cpp
     span.hpp
+    ssa/branch_fold.cpp
+    ssa/branch_fold.hpp
     ssa/cfold.cpp
     ssa/cfold.hpp
     ssa/check.cpp

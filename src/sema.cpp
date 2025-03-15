@@ -15,6 +15,7 @@
 #include "fmt/ranges.h"
 #include "ir.hpp"
 #include "libassert/assert.hpp"
+#include "ssa/branch_fold.hpp"
 #include "ssa/cfold.hpp"
 #include "ssa/check.hpp"
 #include "ssa/dcelim.hpp"
@@ -69,7 +70,7 @@ struct Sema {
     void sema_func(Context const& ctx, Env& env, AstNode const& node) {
         // NOTE: do not get this from the error reporter
         fn.name = er->get_source_path();
-        fn.blocks.emplace_back();
+        alloc_block();
 
         sema_block(ctx, env, node);
     }
@@ -334,7 +335,7 @@ struct Sema {
 
     auto alloc_block() -> uint16_t {
         auto sz = fn.blocks.size();
-        fn.blocks.emplace_back();
+        fn.blocks.emplace_back(sz);
         return sz;
     }
 
@@ -383,6 +384,8 @@ auto sema(ErrorReporter& er, AstNode const& ast) -> ir::Func {
 
         had_changes |= ssa::constant_fold(s.fn);
         had_changes |= ssa::dead_code_elim(s.fn);
+        had_changes |= ssa::branch_fold(s.fn);
+        had_changes |= ssa::branch_elim(s.fn);
 
         ssa::check_valid(s.fn);
     } while (had_changes);
