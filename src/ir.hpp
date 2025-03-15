@@ -48,23 +48,11 @@ struct Inst {
     InstKind           kind{};
     InstType           type{};
     uint16_t           extra_a{};
-    uint16_t           extra_b{};
     std::vector<Inst*> args;
 
     [[nodiscard]] constexpr auto offset() const -> uint16_t { return extra_a; }
 
     [[nodiscard]] constexpr auto shadow() const -> uint16_t { return extra_a; }
-
-    [[nodiscard]] constexpr auto branch_wt() const -> uint16_t {
-        return extra_a;
-    }
-
-    [[nodiscard]] constexpr auto branch_wf() const -> uint16_t {
-        return extra_b;
-    }
-
-    constexpr void branch_wt_set(uint16_t v) { extra_a = v; }
-    constexpr void branch_wf_set(uint16_t v) { extra_b = v; }
 
     [[nodiscard]] constexpr auto is_oneof(auto&&... kinds) const -> bool {
         return ((kind == kinds) || ...);
@@ -88,12 +76,11 @@ struct Inst {
         };
     }
 
-    constexpr void transmute_to_jump(uint16_t target) {
+    constexpr void transmute_to_jump() {
         *this = {
             .id = id,
             .kind = InstKind::Jump,
             .type = type,
-            .extra_a = target,
             .args = {},
         };
     }
@@ -136,15 +123,15 @@ struct Inst {
 };
 
 struct Block {
-    [[nodiscard]] auto successors() const -> std::vector<uint16_t>;
     [[nodiscard]] auto control() const -> Inst* {
         return body.at(body.size() - 1);
     }
 
     // this stores the index of the block. It should be update to match the
     // actual index when blocks are moved.
-    uint16_t           id;
-    std::vector<Inst*> body;
+    uint16_t            id;
+    std::vector<Block*> successors{};
+    std::vector<Inst*>  body{};
 };
 
 struct Const {
@@ -176,15 +163,23 @@ struct Func {
                         std::forward<decltype(args)>(args)...);
     }
 
+    auto alloc_block(auto&&... args) -> Block* {
+        auto ptr =
+            new Block(blocks.size(), std::forward<decltype(args)>(args)...);
+        blocks.push_back(ptr);
+        return ptr;
+    }
+
     void free_inst(Inst* i) { delete i; }
+    void free_block(Block* b);
     void free();
 
     void disasm(FILE* out) const;
 
     uint32_t next_inst_id{};
 
-    std::string        name;
-    std::vector<Block> blocks;
+    std::string         name;
+    std::vector<Block*> blocks;
 
     // store constants, we store both the type and value. The type is there just
     // for debug.

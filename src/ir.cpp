@@ -11,17 +11,6 @@
 
 namespace yuri::ir {
 
-auto Block::successors() const -> std::vector<uint16_t> {
-    auto last_inst = body.at(body.size() - 1);
-
-    if (last_inst->kind == InstKind::Jump) return {last_inst->branch_wt()};
-    if (last_inst->kind == InstKind::Branch)
-        return {last_inst->branch_wt(), last_inst->branch_wf()};
-    if (last_inst->kind == InstKind::Ret) return {};
-
-    UNREACHABLE("invalid inst kind in `successors`", last_inst->kind);
-}
-
 auto Func::alloc_const(InstType ty, uint64_t v) -> uint32_t {
     // de-dup constants
     for (size_t i{}; auto const& [cty, c] : consts) {
@@ -36,12 +25,17 @@ auto Func::alloc_const(InstType ty, uint64_t v) -> uint32_t {
 
 auto Func::alloc_inst_const(InstType ty, uint64_t v) -> Inst* {
     auto idx = alloc_const(ty, v);
-    return alloc_inst(InstKind::Const, ty, idx, 0, std::vector<Inst*>{});
+    return alloc_inst(InstKind::Const, ty, idx, std::vector<Inst*>{});
+}
+
+void Func::free_block(Block* bb) {
+    for (auto const& inst : bb->body) free_inst(inst);
+    delete bb;
 }
 
 void Func::free() {
     for (auto const& bb : blocks) {
-        for (auto const& inst : bb.body) free_inst(inst);
+        free_block(bb);
     }
 }
 
@@ -49,10 +43,10 @@ void Func::disasm(FILE* out) const {
     fmt::println(out, "func @{}()", name);
     fmt::println(out, "; consts: [{:d}]", fmt::join(consts, ", "));
 
-    for (size_t i{}; auto const& bb : blocks) {
-        fmt::println(out, "@b{}:", i);
+    for (auto const& bb : blocks) {
+        fmt::println(out, "@b{}:", bb->id);
 
-        for (auto const& inst : bb.body) {
+        for (auto const& inst : bb->body) {
             if (inst->kind == yuri::ir::InstKind::Const) {
                 fmt::println(out, "{} = {} {} {:d} [{}]", inst->id, inst->type,
                              inst->kind,
@@ -60,15 +54,13 @@ void Func::disasm(FILE* out) const {
                                    .value = get_const_value(inst->offset())},
                              inst->offset());
             } else if (inst->kind == InstKind::Jump) {
-                fmt::println(out, "{} = {} {}", inst->id, inst->kind,
-                             inst->branch_wt());
+                fmt::println(out, "{} = {}", inst->id, inst->kind);
             } else if (inst->kind == InstKind::Branch) {
                 fmt::println(
-                    out, "{} = {} {}, {}, {}", inst->id, inst->kind,
+                    out, "{} = {} {}", inst->id, inst->kind,
                     fmt::join(inst->args | std::ranges::views::transform(
                                                [](auto i) { return i->id; }),
-                              ", "),
-                    inst->branch_wt(), inst->branch_wf());
+                              ", "));
             } else if (inst->kind == InstKind::Phi) {
                 fmt::println(out, "{} = {} {} ^{}", inst->id, inst->type,
                              inst->kind, inst->shadow());
@@ -88,7 +80,11 @@ void Func::disasm(FILE* out) const {
             }
         }
 
-        i++;
+        fmt::println(
+            out, "successors: [{}]",
+            fmt::join(bb->successors | std::ranges::views::transform(
+                                           [](auto b) { return b->id; }),
+                      ", "));
     }
 }
 
@@ -147,8 +143,7 @@ auto fmt::formatter<yuri::ir::Inst>::format(yuri::ir::Inst  i,
     if (i.kind == yuri::ir::InstKind::Jump)
         return fmt::format_to(ctx.out(), "{} {}", i.kind, i.offset());
     if (i.kind == yuri::ir::InstKind::Branch)
-        return fmt::format_to(ctx.out(), "{} {}, {}", i.kind, i.branch_wt(),
-                              i.branch_wt());
+        return fmt::format_to(ctx.out(), "{}", i.kind);
     if (i.kind == yuri::ir::InstKind::Phi)
         fmt::format_to(ctx.out(), "{} = {} {} ^{}", i.id, i.type, i.kind,
                        i.shadow());

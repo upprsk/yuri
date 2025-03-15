@@ -1,22 +1,22 @@
-var x = 42;
-
-if 1 {
-    var a = 10;
-    x = x + a;
-} else {
-    var a = 10;
-    x = x * a;
-}
-
-return x;
-
-// var a = 42;
-// var b = a + 27; // 69
+// var x = 42;
 // 
 // if 1 {
-//     a = 2 * (1 + 8 / 2);
+//     var a = 10;
+//     x = x + a;
 // } else {
-//     a = 2;
+//     var a = 10;
+//     x = x * a;
 // }
 // 
-// return b * a;
+// return x;
+
+var a = 42;
+var b = a + 27; // 69
+
+if 1 {
+    a = 2 * (1 + 8 / 2); // 10
+} else {
+    a = 2;
+}
+
+return b * a;

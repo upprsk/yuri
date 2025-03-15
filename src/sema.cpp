@@ -7,6 +7,7 @@
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "ast.hpp"
@@ -26,26 +27,26 @@ struct Decl {
     std::string name;
     ir::Inst*   val;
 
-    uint16_t id;
-    uint16_t block;
-    uint16_t generation;
+    ir::Block* block;
+    uint16_t   id;
+    uint16_t   generation;
 };
 
 struct Env {
     constexpr auto child() -> Env { return {.parent = this, .decls = {}}; }
 
-    auto define_assign(Decl const& decl, ir::Inst* val, uint16_t block)
+    auto define_assign(Decl const& decl, ir::Inst* val, ir::Block* block)
         -> uint16_t {
         return define(decl.name, val, block, decl.generation + 1, decl.id);
     }
 
-    auto define(std::string name, ir::Inst* val, uint16_t blk, uint16_t gen,
+    auto define(std::string name, ir::Inst* val, ir::Block* blk, uint16_t gen,
                 uint16_t id) -> uint16_t {
         decls.push_back({
             .name = name,
             .val = val,
-            .id = id,
             .block = blk,
+            .id = id,
             .generation = gen,
         });
 
@@ -70,7 +71,7 @@ struct Sema {
     void sema_func(Context const& ctx, Env& env, AstNode const& node) {
         // NOTE: do not get this from the error reporter
         fn.name = er->get_source_path();
-        alloc_block();
+        current_block = alloc_block();
 
         sema_block(ctx, env, node);
     }
@@ -227,8 +228,8 @@ struct Sema {
         auto wf = alloc_block();
         auto after = wf;
 
-        push_inst_branch(wt, wf, cond);
-        seal_block(current_block);
+        push_inst_branch(cond);
+        seal_block(current_block, wt, wf);
 
         // sema the then branch
         set_current_block(wt);
@@ -239,15 +240,15 @@ struct Sema {
             after = alloc_block();
         }
 
-        push_inst_jump(after);
-        seal_block(current_block);
+        push_inst_jump();
+        seal_block(current_block, after);
 
         if (has_else) {
             set_current_block(wf);
             sema_block(ctx, env, *node.third());
 
-            push_inst_jump(after);
-            seal_block(current_block);
+            push_inst_jump();
+            seal_block(current_block, after);
         }
 
         set_current_block(after);
@@ -260,14 +261,14 @@ struct Sema {
     }
 
     [[nodiscard]] auto requires_phi(uint16_t id) const -> bool {
-        std::queue<uint16_t> worklist;
+        std::queue<ir::Block*> worklist;
 
-        auto add = [&](std::span<uint16_t const> blks) {
+        auto add = [&](std::span<ir::Block* const> blks) {
             for (auto blk : blks) worklist.push(blk);
         };
 
-        std::unordered_set<uint16_t> checked;
-        size_t                       ndefs{};
+        std::unordered_set<ir::Block*> checked;
+        size_t                         ndefs{};
 
         add(predecessors.at(current_block));
         while (!worklist.empty()) {
@@ -277,7 +278,9 @@ struct Sema {
             if (checked.contains(blk)) continue;
 
             checked.insert(blk);
-            add(predecessors.at(blk));
+
+            auto pit = predecessors.find(blk);
+            if (pit != predecessors.end()) add(pit->second);
 
             auto it = definitions.find(blk);
             if (it == definitions.end()) continue;
@@ -297,15 +300,15 @@ struct Sema {
         return i;
     }
 
-    auto push_inst_branch(uint16_t wt, uint16_t wf, auto&&... v) -> ir::Inst* {
-        auto i = fn.alloc_inst(ir::InstKind::Branch, ir::InstType::Err, wt, wf,
+    auto push_inst_branch(auto&&... v) -> ir::Inst* {
+        auto i = fn.alloc_inst(ir::InstKind::Branch, ir::InstType::Err, 0,
                                std::vector<ir::Inst*>{v...});
         get_current_block()->body.push_back(i);
         return i;
     }
 
-    auto push_inst_jump(uint16_t b) -> ir::Inst* {
-        auto i = fn.alloc_inst(ir::InstKind::Jump, ir::InstType::Err, b, 0,
+    auto push_inst_jump() -> ir::Inst* {
+        auto i = fn.alloc_inst(ir::InstKind::Jump, ir::InstType::Err, 0,
                                std::vector<ir::Inst*>{});
         get_current_block()->body.push_back(i);
         return i;
@@ -313,52 +316,42 @@ struct Sema {
 
     auto push_inst_phi(ir::InstKind kind, ir::InstType ty, uint16_t shadow,
                        auto&&... v) -> ir::Inst* {
-        auto i =
-            fn.alloc_inst(kind, ty, shadow, 0, std::vector<ir::Inst*>{v...});
+        auto i = fn.alloc_inst(kind, ty, shadow, std::vector<ir::Inst*>{v...});
         get_current_block()->body.push_back(i);
         return i;
     }
 
     auto push_inst(ir::InstKind kind, ir::InstType ty, auto&&... v)
         -> ir::Inst* {
-        auto i = fn.alloc_inst(kind, ty, 0, 0, std::vector<ir::Inst*>{v...});
+        auto i = fn.alloc_inst(kind, ty, 0, std::vector<ir::Inst*>{v...});
         get_current_block()->body.push_back(i);
         return i;
     }
 
     auto get_current_block() -> ir::Block* {
-        ASSERT(fn.blocks.size() > 0);
-        return &fn.blocks.at(current_block);
+        ASSERT(current_block != nullptr);
+        return current_block;
     }
 
-    void set_current_block(uint16_t blk) { current_block = blk; }
+    void set_current_block(ir::Block* blk) { current_block = blk; }
 
-    auto alloc_block() -> uint16_t {
-        auto sz = fn.blocks.size();
-        fn.blocks.emplace_back(sz);
-        return sz;
-    }
+    auto alloc_block() -> ir::Block* { return fn.alloc_block(); }
 
-    void seal_block(uint16_t blk) {
-        auto successors = fn.blocks.at(blk).successors();
-        for (auto const& s : successors) {
-            resize_predecessors_up_to(s);
-            predecessors.at(s).push_back(blk);
+    void seal_block(ir::Block* blk, auto&&... v) {
+        blk->successors = {std::forward<decltype(v)>(v)...};
+        for (auto const& s : blk->successors) {
+            predecessors[s].push_back(blk);
         }
-    }
-
-    void resize_predecessors_up_to(uint16_t blk) {
-        while (blk >= predecessors.size()) predecessors.emplace_back();
     }
 
     // ------------------------------------------------------------------------
 
     // TODO: use a better map impl
-    std::vector<std::vector<uint16_t>>                         predecessors;
-    std::unordered_map<uint16_t, std::unordered_set<uint16_t>> definitions;
+    std::unordered_map<ir::Block*, std::vector<ir::Block*>>      predecessors;
+    std::unordered_map<ir::Block*, std::unordered_set<uint16_t>> definitions;
 
-    uint16_t current_block{};
-    uint16_t next_decl_id{};
+    ir::Block* current_block{};
+    uint16_t   next_decl_id{};
 
     ir::Func       fn{};
     ErrorReporter* er;

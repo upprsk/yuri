@@ -25,7 +25,7 @@ add_library(yuri
 target_include_directories(yuri PUBLIC .)
 target_compile_options(yuri PRIVATE -Wall -Wextra)
 target_link_libraries(yuri PUBLIC fmt::fmt libassert::assert)
-target_compile_definitions(yuri PUBLIC LIBASSERT_USE_FMT=1)
+target_compile_definitions(yuri PUBLIC LIBASSERT_USE_FMT)
 
 # On windows copy libassert.dll to the same directory as the executable for yuri
 if(WIN32)

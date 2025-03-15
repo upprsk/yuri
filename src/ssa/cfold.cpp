@@ -13,7 +13,7 @@ auto constant_fold(ir::Func& fn) -> bool {
     auto had_changes = false;
 
     for (auto const& bb : fn.blocks) {
-        for (auto const& inst : bb.body) {
+        for (auto const& inst : bb->body) {
             // v_1 = T Div v_0, 0
             // ---
             // ERROR
@@ -94,7 +94,7 @@ auto constant_fold(ir::Func& fn) -> bool {
     }
 
     for (auto const& bb : fn.blocks) {
-        for (auto const& inst : bb.body) {
+        for (auto const& inst : bb->body) {
             for (auto& arg : inst->args) {
                 if (arg->is_fwd()) {
                     arg = arg->unwrap_fwd();
