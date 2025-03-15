@@ -2,8 +2,11 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <queue>
 #include <ranges>
 #include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "ast.hpp"
@@ -22,6 +25,7 @@ struct Decl {
     std::string name;
     ir::Inst*   val;
 
+    uint16_t id;
     uint16_t block;
     uint16_t generation;
 };
@@ -29,17 +33,22 @@ struct Decl {
 struct Env {
     constexpr auto child() -> Env { return {.parent = this, .decls = {}}; }
 
-    void define_assign(Decl const& decl, ir::Inst* val, uint16_t block) {
-        define(decl.name, val, block, decl.generation + 1);
+    auto define_assign(Decl const& decl, ir::Inst* val, uint16_t block)
+        -> uint16_t {
+        return define(decl.name, val, block, decl.generation + 1, decl.id);
     }
 
-    void define(std::string name, ir::Inst* val, uint16_t block, uint16_t gen) {
+    auto define(std::string name, ir::Inst* val, uint16_t blk, uint16_t gen,
+                uint16_t id) -> uint16_t {
         decls.push_back({
             .name = name,
             .val = val,
-            .block = block,
+            .id = id,
+            .block = blk,
             .generation = gen,
         });
+
+        return id;
     }
 
     [[nodiscard]] auto lookup(std::string_view name) -> Decl* {
@@ -129,6 +138,14 @@ struct Sema {
                     return push_inst(ir::InstKind::Err, ir::InstType::Err);
                 }
 
+                if (v->block != current_block) {
+                    if (requires_phi(v->id)) {
+                        mark_definition_in_block(v->id);
+                        return push_inst_phi(ir::InstKind::Phi, v->val->type,
+                                             v->id);
+                    }
+                }
+
                 return v->val;
             }
 
@@ -143,7 +160,7 @@ struct Sema {
         auto env = env_.child();
 
         for (auto const& stmt : node.children) {
-            sema_stmt(ctx, env_, stmt);
+            sema_stmt(ctx, env, stmt);
         }
     }
 
@@ -154,7 +171,9 @@ struct Sema {
                "explicit type in decl has not been implemented");
 
         auto init = sema_expr(ctx, env, node.children.at(1));
-        env.define(std::string{node.value_string()}, init, current_block, 0);
+        auto id = env.define(std::string{node.value_string()}, init,
+                             current_block, 0, next_decl_id++);
+        mark_definition_in_block(id);
     }
 
     // NOLINTNEXTLINE(readability-function-cognitive-complexity)
@@ -170,13 +189,17 @@ struct Sema {
                 return;
             }
 
-            // FIXME: this is where we might need to handle phis
-            ASSERT(decl->block == current_block);
-
             auto rhs = sema_expr(ctx, env, *node.second());
 
             // an assign just shadows the previous declaration
-            env.define_assign(*decl, rhs, current_block);
+            auto id = env.define_assign(*decl, rhs, current_block);
+            mark_definition_in_block(id);
+
+            if (decl->block != current_block) {
+                push_inst_phi(ir::InstKind::Upsilon, decl->val->type, decl->id,
+                              rhs);
+            }
+
             return;
         }
 
@@ -188,6 +211,7 @@ struct Sema {
 
         auto child = sema_expr(ctx, env, node.children.at(0));
         push_inst(ir::InstKind::Ret, child->type, child);
+        seal_block(current_block);
     }
 
     // NOLINTNEXTLINE(readability-function-cognitive-complexity)
@@ -203,6 +227,7 @@ struct Sema {
         auto after = wf;
 
         push_inst_branch(wt, wf, cond);
+        seal_block(current_block);
 
         // sema the then branch
         set_current_block(wt);
@@ -214,15 +239,53 @@ struct Sema {
         }
 
         push_inst_jump(after);
+        seal_block(current_block);
 
         if (has_else) {
             set_current_block(wf);
             sema_block(ctx, env, *node.third());
 
             push_inst_jump(after);
+            seal_block(current_block);
         }
 
         set_current_block(after);
+    }
+
+    // ------------------------------------------------------------------------
+
+    void mark_definition_in_block(uint16_t id) {
+        definitions[current_block].insert(id);
+    }
+
+    [[nodiscard]] auto requires_phi(uint16_t id) const -> bool {
+        std::queue<uint16_t> worklist;
+
+        auto add = [&](std::span<uint16_t const> blks) {
+            for (auto blk : blks) worklist.push(blk);
+        };
+
+        std::unordered_set<uint16_t> checked;
+        size_t                       ndefs{};
+
+        add(predecessors.at(current_block));
+        while (!worklist.empty()) {
+            auto blk = worklist.front();
+            worklist.pop();
+
+            if (checked.contains(blk)) continue;
+
+            checked.insert(blk);
+            add(predecessors.at(blk));
+
+            auto it = definitions.find(blk);
+            if (it == definitions.end()) continue;
+
+            ndefs += it->second.contains(id);
+        }
+
+        ASSERT(ndefs > 0);
+        return ndefs > 1;
     }
 
     // ------------------------------------------------------------------------
@@ -247,6 +310,14 @@ struct Sema {
         return i;
     }
 
+    auto push_inst_phi(ir::InstKind kind, ir::InstType ty, uint16_t shadow,
+                       auto&&... v) -> ir::Inst* {
+        auto i =
+            fn.alloc_inst(kind, ty, shadow, 0, std::vector<ir::Inst*>{v...});
+        get_current_block()->body.push_back(i);
+        return i;
+    }
+
     auto push_inst(ir::InstKind kind, ir::InstType ty, auto&&... v)
         -> ir::Inst* {
         auto i = fn.alloc_inst(kind, ty, 0, 0, std::vector<ir::Inst*>{v...});
@@ -267,15 +338,33 @@ struct Sema {
         return sz;
     }
 
+    void seal_block(uint16_t blk) {
+        auto successors = fn.blocks.at(blk).successors();
+        for (auto const& s : successors) {
+            resize_predecessors_up_to(s);
+            predecessors.at(s).push_back(blk);
+        }
+    }
+
+    void resize_predecessors_up_to(uint16_t blk) {
+        while (blk >= predecessors.size()) predecessors.emplace_back();
+    }
+
     // ------------------------------------------------------------------------
 
+    // TODO: use a better map impl
+    std::vector<std::vector<uint16_t>>                         predecessors;
+    std::unordered_map<uint16_t, std::unordered_set<uint16_t>> definitions;
+
+    uint16_t current_block{};
+    uint16_t next_decl_id{};
+
     ir::Func       fn{};
-    uint16_t       current_block{};
     ErrorReporter* er;
 };
 
 auto sema(ErrorReporter& er, AstNode const& ast) -> ir::Func {
-    auto s = Sema{.er = &er};
+    auto s = Sema{.predecessors = {}, .definitions = {}, .er = &er};
 
     Env env;
     s.sema_func({}, env, ast);

@@ -23,6 +23,9 @@ enum class InstKind : uint16_t {
     Umul,
     Udiv,
 
+    Upsilon,
+    Phi,
+
     Branch,
     Jump,
     Ret,
@@ -44,9 +47,21 @@ struct Inst {
     InstId             id;
     InstKind           kind{};
     InstType           type{};
-    uint32_t           offset{};
-    uint32_t           branch{};
+    uint16_t           extra_a{};
+    uint16_t           extra_b{};
     std::vector<Inst*> args;
+
+    [[nodiscard]] constexpr auto offset() const -> uint16_t { return extra_a; }
+
+    [[nodiscard]] constexpr auto shadow() const -> uint16_t { return extra_a; }
+
+    [[nodiscard]] constexpr auto branch_wt() const -> uint16_t {
+        return extra_a;
+    }
+
+    [[nodiscard]] constexpr auto branch_wf() const -> uint16_t {
+        return extra_b;
+    }
 
     [[nodiscard]] constexpr auto is_oneof(auto&&... kinds) const -> bool {
         return ((kind == kinds) || ...);
@@ -60,12 +75,12 @@ struct Inst {
         };
     }
 
-    constexpr void transmute_to_const(uint32_t offset) {
+    constexpr void transmute_to_const(uint16_t offset) {
         *this = {
             .id = id,
             .kind = InstKind::Const,
             .type = type,
-            .offset = offset,
+            .extra_a = offset,
             .args = {},
         };
     }
@@ -103,11 +118,13 @@ struct Inst {
     }
 
     [[nodiscard]] constexpr auto has_side_effect() const -> bool {
-        return is_branch();
+        return is_branch() || kind == InstKind::Upsilon;
     }
 };
 
 struct Block {
+    [[nodiscard]] auto successors() const -> std::vector<uint16_t>;
+
     std::vector<Inst*> body;
 };
 
@@ -119,18 +136,18 @@ struct Const {
 struct Func {
     [[nodiscard]] auto alloc_const(InstType ty, uint64_t v) -> uint32_t;
 
-    [[nodiscard]] constexpr auto get_const_value(uint32_t offset) const
+    [[nodiscard]] constexpr auto get_const_value(uint16_t offset) const
         -> uint64_t {
         return consts.at(offset).value;
     }
 
-    [[nodiscard]] constexpr auto get_const(uint32_t offset) const -> Const {
+    [[nodiscard]] constexpr auto get_const(uint16_t offset) const -> Const {
         return consts.at(offset);
     }
 
     [[nodiscard]] constexpr auto const_eq_to(Inst const* inst,
                                              uint64_t    rhs) const -> bool {
-        return inst->is_const() && get_const_value(inst->offset) == rhs;
+        return inst->is_const() && get_const_value(inst->offset()) == rhs;
     }
 
     auto alloc_inst_const(InstType ty, uint64_t v) -> Inst*;

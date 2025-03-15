@@ -29,8 +29,8 @@ auto constant_fold(ir::Func& fn) -> bool {
                                     ir::InstKind::Imul, ir::InstKind::Idiv,
                                     ir::InstKind::Umul, ir::InstKind::Udiv) &&
                      inst->first()->is_const() && inst->second()->is_const()) {
-                auto lhs = fn.get_const_value(inst->first()->offset);
-                auto rhs = fn.get_const_value(inst->second()->offset);
+                auto lhs = fn.get_const_value(inst->first()->offset());
+                auto rhs = fn.get_const_value(inst->second()->offset());
 
                 uint64_t v;
                 switch (inst->kind) {

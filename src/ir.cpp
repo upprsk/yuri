@@ -11,6 +11,17 @@
 
 namespace yuri::ir {
 
+auto Block::successors() const -> std::vector<uint16_t> {
+    auto last_inst = body.at(body.size() - 1);
+
+    if (last_inst->kind == InstKind::Jump) return {last_inst->branch_wt()};
+    if (last_inst->kind == InstKind::Branch)
+        return {last_inst->branch_wt(), last_inst->branch_wf()};
+    if (last_inst->kind == InstKind::Ret) return {};
+
+    UNREACHABLE("invalid inst kind in `successors`", last_inst->kind);
+}
+
 auto Func::alloc_const(InstType ty, uint64_t v) -> uint32_t {
     // de-dup constants
     for (size_t i{}; auto const& [cty, c] : consts) {
@@ -38,24 +49,36 @@ void Func::disasm(FILE* out) const {
     fmt::println(out, "func @{}()", name);
     fmt::println(out, "; consts: [{:d}]", fmt::join(consts, ", "));
 
-    for (auto const& bb : blocks) {
+    for (size_t i{}; auto const& bb : blocks) {
+        fmt::println(out, "@b{}:", i);
+
         for (auto const& inst : bb.body) {
             if (inst->kind == yuri::ir::InstKind::Const) {
                 fmt::println(out, "{} = {} {} {:d} [{}]", inst->id, inst->type,
                              inst->kind,
                              Const{.ty = inst->type,
-                                   .value = get_const_value(inst->offset)},
-                             inst->offset);
+                                   .value = get_const_value(inst->offset())},
+                             inst->offset());
             } else if (inst->kind == InstKind::Jump) {
                 fmt::println(out, "{} = {} {}", inst->id, inst->kind,
-                             inst->offset);
+                             inst->branch_wt());
             } else if (inst->kind == InstKind::Branch) {
                 fmt::println(
                     out, "{} = {} {}, {}, {}", inst->id, inst->kind,
                     fmt::join(inst->args | std::ranges::views::transform(
                                                [](auto i) { return i->id; }),
                               ", "),
-                    inst->offset, inst->branch);
+                    inst->branch_wt(), inst->branch_wf());
+            } else if (inst->kind == InstKind::Phi) {
+                fmt::println(out, "{} = {} {} ^{}", inst->id, inst->type,
+                             inst->kind, inst->shadow());
+            } else if (inst->kind == InstKind::Upsilon) {
+                fmt::println(
+                    out, "{} = {} {} {}, ^{}", inst->id, inst->type, inst->kind,
+                    fmt::join(inst->args | std::ranges::views::transform(
+                                               [](auto i) { return i->id; }),
+                              ", "),
+                    inst->shadow());
             } else {
                 fmt::println(
                     out, "{} = {} {} {}", inst->id, inst->type, inst->kind,
@@ -64,6 +87,8 @@ void Func::disasm(FILE* out) const {
                               ", "));
             }
         }
+
+        i++;
     }
 }
 
@@ -84,6 +109,8 @@ auto fmt::formatter<yuri::ir::InstKind>::format(yuri::ir::InstKind t,
         case yuri::ir::InstKind::Idiv: name = "Idiv"; break;
         case yuri::ir::InstKind::Umul: name = "Umul"; break;
         case yuri::ir::InstKind::Udiv: name = "Udiv"; break;
+        case yuri::ir::InstKind::Upsilon: name = "Upsilon"; break;
+        case yuri::ir::InstKind::Phi: name = "Phi"; break;
         case yuri::ir::InstKind::Branch: name = "Branch"; break;
         case yuri::ir::InstKind::Jump: name = "Jump"; break;
         case yuri::ir::InstKind::Ret: name = "Ret"; break;
@@ -116,12 +143,21 @@ auto fmt::formatter<yuri::ir::Inst>::format(yuri::ir::Inst  i,
     -> format_context::iterator {
     if (i.kind == yuri::ir::InstKind::Const)
         return fmt::format_to(ctx.out(), "{} = {} {} [{}]", i.id, i.type,
-                              i.kind, i.offset);
+                              i.kind, i.offset());
     if (i.kind == yuri::ir::InstKind::Jump)
-        return fmt::format_to(ctx.out(), "{} {}", i.kind, i.offset);
+        return fmt::format_to(ctx.out(), "{} {}", i.kind, i.offset());
     if (i.kind == yuri::ir::InstKind::Branch)
-        return fmt::format_to(ctx.out(), "{} {}, {}", i.kind, i.offset,
-                              i.branch);
+        return fmt::format_to(ctx.out(), "{} {}, {}", i.kind, i.branch_wt(),
+                              i.branch_wt());
+    if (i.kind == yuri::ir::InstKind::Phi)
+        fmt::format_to(ctx.out(), "{} = {} {} ^{}", i.id, i.type, i.kind,
+                       i.shadow());
+    if (i.kind == yuri::ir::InstKind::Upsilon)
+        fmt::format_to(ctx.out(), "{} = {} {} {}, ^{}", i.id, i.type, i.kind,
+                       fmt::join(i.args | std::ranges::views::transform(
+                                              [](auto i) { return i->id; }),
+                                 ", "),
+                       i.shadow());
 
     return fmt::format_to(ctx.out(), "{} = {} {} {}", i.id, i.type, i.kind,
                           fmt::join(i.args | std::ranges::views::transform(
