@@ -1,6 +1,8 @@
 add_library(yuri
     ast.cpp
     ast.hpp
+    codegen.cpp
+    codegen.hpp
     error_reporter.cpp
     error_reporter.hpp
     parser.cpp

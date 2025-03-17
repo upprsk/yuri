@@ -31,6 +31,10 @@ struct AstNode {
     std::vector<AstNode>                                children;
     std::variant<std::monostate, uint64_t, std::string> value;
 
+    [[nodiscard]] constexpr auto value_uint64() const -> uint64_t {
+        return std::get<uint64_t>(value);
+    }
+
     static auto Error(Span s) -> AstNode {
         return {
             .kind = AstNodeKind::Err, .span = s, .children = {}, .value = {}};

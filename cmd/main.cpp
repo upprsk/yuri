@@ -2,6 +2,7 @@
 #include <memory>
 #include <optional>
 
+#include "codegen.hpp"
 #include "cpptrace/from_current.hpp"
 #include "error_reporter.hpp"
 #include "fmt/base.h"
@@ -48,7 +49,9 @@ auto main(int argc, char** argv) -> int {
 
         auto tokens = tokenize(*contents, er);
         auto ast = yuri::parse(tokens, *contents, er);
-        fmt::println("{}", ast);
+        fmt::println(stderr, "{}", ast);
+
+        yuri::codegen(ast, stdout, er);
 
         return 0;
     }
