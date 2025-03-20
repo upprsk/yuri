@@ -103,8 +103,7 @@ struct Codegen {
                 codegen_expr(n.children.at(0));
                 auto r = pop_reg();
                 auto o = push_reg();
-                println(out, "    li $at, 0");
-                println(out, "    sub {}, $at, {}", o, r);
+                println(out, "    sub {}, $zero, {}", o, r);
             } break;
 
             case AstNodeKind::Int: {
