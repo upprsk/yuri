@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <variant>
 #include <vector>
@@ -12,6 +13,9 @@ namespace yuri {
 enum class AstNodeKind {
     Err,
 
+    VarDecl,
+
+    Block,
     ReturnStmt,
 
     Add,
@@ -35,9 +39,31 @@ struct AstNode {
         return std::get<uint64_t>(value);
     }
 
+    [[nodiscard]] constexpr auto value_string() const -> std::string const& {
+        return std::get<std::string>(value);
+    }
+
     static auto Error(Span s) -> AstNode {
         return {
             .kind = AstNodeKind::Err, .span = s, .children = {}, .value = {}};
+    }
+
+    static auto VarDecl(Span s, std::string name, AstNode init) -> AstNode {
+        return {
+            .kind = AstNodeKind::VarDecl,
+            .span = s,
+            .children = {init},
+            .value = name,
+        };
+    }
+
+    static auto Block(Span s, std::vector<AstNode> children) -> AstNode {
+        return {
+            .kind = AstNodeKind::Block,
+            .span = s,
+            .children = children,
+            .value = {},
+        };
     }
 
     static auto ReturnStmt(Span s, AstNode child) -> AstNode {

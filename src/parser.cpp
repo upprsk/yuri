@@ -85,7 +85,47 @@ struct Parser {
 
     // ------------------------------------------------------------------------
 
-    auto parse_source_file() -> AstNode { return parse_return_stmt(); }
+    auto parse_source_file() -> AstNode {
+        std::vector<AstNode> stmts;
+
+        while (!is_at_end()) {
+            stmts.push_back(parse_stmt());
+        }
+
+        auto span =
+            stmts.empty()
+                ? Span{}
+                : stmts.at(0).span.extend(stmts.at(stmts.size() - 1).span);
+
+        return AstNode::Block(span, stmts);
+    }
+
+    auto parse_stmt() -> AstNode {
+        if (check("var")) return parse_var_decl();
+        if (check("return")) return parse_return_stmt();
+
+        throw std::runtime_error{"NOT IMPLEMENTED"};
+    }
+
+    auto parse_var_decl() -> AstNode {
+        auto s = span();
+        if (!consume("var")) return AstNode::Error(s);
+
+        auto id = peek();
+        if (!consume(TokenType::Id))
+            return AstNode::Error(s.extend(prev_span()));
+
+        if (!consume(TokenType::Equal))
+            return AstNode::Error(s.extend(prev_span()));
+
+        auto init = parse_expr();
+
+        if (!consume(TokenType::Semi))
+            return AstNode::Error(s.extend(prev_span()));
+
+        return AstNode::VarDecl(s.extend(prev_span()),
+                                std::string{id.span.src(source)}, init);
+    }
 
     auto parse_return_stmt() -> AstNode {
         auto s = span();

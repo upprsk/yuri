@@ -3,6 +3,8 @@
 #include <array>
 #include <cstdint>
 #include <cstdio>
+#include <limits>
+#include <stdexcept>
 #include <string_view>
 
 #include "ast.hpp"
@@ -17,11 +19,22 @@ struct Reg {
     uint8_t n;
 };
 
+struct Local {
+    std::string name;
+    Reg         reg;
+};
+
 static constexpr std::array regs{
     "zero", "at", "v0", "v1", "a0", "a1", "a2", "a3", "t0", "t1", "t2",
     "t3",   "t4", "t5", "t6", "t7", "s0", "s1", "s2", "s3", "s4", "s5",
     "s6",   "s7", "t8", "t9", "k0", "k1", "gp", "sp", "fp", "ra",
 };
+
+static constexpr uint8_t const reg_t0 = 8;
+static constexpr uint8_t const reg_s0 = 16;
+
+static constexpr size_t const temporary_count = 8;
+static constexpr size_t const locals_count = 8;
 
 }  // namespace yuri
 
@@ -60,6 +73,18 @@ struct Codegen {
 
     void codegen_stmt(AstNode const& n) {
         switch (n.kind) {
+            case AstNodeKind::VarDecl: {
+                codegen_expr(n.children.at(0));
+                auto r = pop_reg();
+                auto l = push_local(n.value_string());
+                println(out, "    # local {}", n.value_string());
+                println(out, "    move {}, {}", l, r);
+            } break;
+
+            case AstNodeKind::Block: {
+                for (auto const& c : n.children) codegen_stmt(c);
+            } break;
+
             case AstNodeKind::ReturnStmt: {
                 codegen_expr(n.children.at(0));
                 auto r = pop_reg();
@@ -111,7 +136,17 @@ struct Codegen {
                 println(out, "    li {}, {}", r, n.value_uint64());
             } break;
 
-            case AstNodeKind::Id:
+            case AstNodeKind::Id: {
+                auto l = lookup_local(n.value_string());
+                if (l == nullptr) {
+                    er->report_error(n.span, "undefined identifier: '{}'",
+                                     n.value_string());
+                    break;
+                }
+
+                auto r = push_reg();
+                println(out, "    move {}, {}", r, l->reg);
+            } break;
 
             default:
                 throw std::runtime_error{
@@ -121,19 +156,54 @@ struct Codegen {
 
     // ========================================================================
 
-    auto push_reg() -> Reg { return {stack_top++}; }
+    auto push_reg() -> Reg {
+        auto r = stack_top++;
+        if (r - reg_t0 >= temporary_count)
+            throw std::runtime_error{fmt::format(
+                "max number of temporaries reached: {}", r - reg_t0)};
+
+        return {r};
+    }
+
     auto pop_reg() -> Reg { return {--stack_top}; }
+
+    auto push_local(std::string name) -> Reg {
+        auto r = locals.size();
+        if (r >= locals_count)
+            throw std::runtime_error{
+                fmt::format("max number of locals reached: {}", r)};
+
+        auto reg = Reg{static_cast<uint8_t>(r + reg_s0)};
+        locals.push_back({.name = name, .reg = reg});
+
+        return reg;
+    }
+
+    auto pop_local() -> Reg {
+        locals.pop_back();
+        auto r = locals.size();
+        return {static_cast<uint8_t>(r)};
+    }
+
+    auto lookup_local(std::string_view name) -> Local* {
+        for (ssize_t i = locals.size() - 1; i >= 0; i--) {
+            if (locals.at(i).name == name) return &locals.at(0);
+        }
+
+        return nullptr;
+    }
 
     // ========================================================================
 
-    uint8_t stack_top = 8;
+    uint8_t            stack_top = reg_t0;
+    std::vector<Local> locals;
 
     FILE*          out;
     ErrorReporter* er;
 };
 
 void codegen(AstNode const& n, FILE* out, ErrorReporter& er) {
-    auto codegen = Codegen{.out = out, .er = &er};
+    auto codegen = Codegen{.locals = {}, .out = out, .er = &er};
 
     codegen.preamble();
     codegen.codegen_func(n);
