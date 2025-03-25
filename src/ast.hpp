@@ -16,7 +16,9 @@ enum class AstNodeKind {
     VarDecl,
 
     Block,
+    ExprStmt,
     ReturnStmt,
+    Assign,
 
     Add,
     Sub,
@@ -43,6 +45,10 @@ struct AstNode {
         return std::get<std::string>(value);
     }
 
+    [[nodiscard]] constexpr auto is_lvalue() const -> bool {
+        return kind == AstNodeKind::Id;
+    }
+
     static auto Error(Span s) -> AstNode {
         return {
             .kind = AstNodeKind::Err, .span = s, .children = {}, .value = {}};
@@ -66,11 +72,29 @@ struct AstNode {
         };
     }
 
+    static auto ExprStmt(Span s, AstNode child) -> AstNode {
+        return {
+            .kind = AstNodeKind::ExprStmt,
+            .span = s,
+            .children = {child},
+            .value = {},
+        };
+    }
+
     static auto ReturnStmt(Span s, AstNode child) -> AstNode {
         return {
             .kind = AstNodeKind::ReturnStmt,
             .span = s,
             .children = {child},
+            .value = {},
+        };
+    }
+
+    static auto Assign(Span s, AstNode lhs, AstNode rhs) -> AstNode {
+        return {
+            .kind = AstNodeKind::Assign,
+            .span = s,
+            .children = {lhs, rhs},
             .value = {},
         };
     }

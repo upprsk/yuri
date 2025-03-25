@@ -104,7 +104,18 @@ struct Parser {
         if (check("var")) return parse_var_decl();
         if (check("return")) return parse_return_stmt();
 
-        throw std::runtime_error{"NOT IMPLEMENTED"};
+        auto lhs = parse_expr();
+        if (match(TokenType::Equal)) {
+            auto rhs = parse_expr();
+
+            if (!consume(TokenType::Semi)) return AstNode::Error(prev_span());
+
+            return AstNode::Assign(lhs.span.extend(prev_span()), lhs, rhs);
+        }
+
+        if (!consume(TokenType::Semi)) return AstNode::Error(prev_span());
+
+        return AstNode::ExprStmt(lhs.span.extend(prev_span()), lhs);
     }
 
     auto parse_var_decl() -> AstNode {

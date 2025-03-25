@@ -14,7 +14,9 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind n,
         case yuri::AstNodeKind::Err: name = "Err"; break;
         case yuri::AstNodeKind::VarDecl: name = "VarDecl"; break;
         case yuri::AstNodeKind::Block: name = "Block"; break;
+        case yuri::AstNodeKind::ExprStmt: name = "ExprStmt"; break;
         case yuri::AstNodeKind::ReturnStmt: name = "ReturnStmt"; break;
+        case yuri::AstNodeKind::Assign: name = "Assign"; break;
         case yuri::AstNodeKind::Add: name = "Add"; break;
         case yuri::AstNodeKind::Sub: name = "Sub"; break;
         case yuri::AstNodeKind::Mul: name = "Mul"; break;

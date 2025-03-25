@@ -85,12 +85,43 @@ struct Codegen {
                 for (auto const& c : n.children) codegen_stmt(c);
             } break;
 
+            case AstNodeKind::ExprStmt: {
+                codegen_expr(n.children.at(0));
+                pop_reg();
+            } break;
+
             case AstNodeKind::ReturnStmt: {
                 codegen_expr(n.children.at(0));
                 auto r = pop_reg();
 
                 println(out, "    move $v0, {}", r);
                 println(out, "    b _start.end");
+            } break;
+
+            case AstNodeKind::Assign: {
+                auto const& lhs = n.children.at(0);
+                auto const& rhs = n.children.at(1);
+
+                if (!lhs.is_lvalue()) {
+                    er->report_error(lhs.span, "can't assign to non-lvalue {}",
+                                     lhs.kind);
+                    break;
+                }
+
+                if (lhs.kind == AstNodeKind::Id) {
+                    auto l = lookup_local(lhs.value_string());
+                    if (l == nullptr) {
+                        er->report_error(lhs.span, "undefined identifier: '{}'",
+                                         lhs.value_string());
+                        break;
+                    }
+
+                    codegen_expr(rhs);
+                    auto r = pop_reg();
+                    println(out, "    move {}, {}", l->reg, r);
+                } else {
+                    __builtin_unreachable();
+                }
             } break;
 
             default:
