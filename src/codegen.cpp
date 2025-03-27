@@ -82,6 +82,7 @@ struct Codegen {
             } break;
 
             case AstNodeKind::Block: {
+                // TODO: handle scoping rules
                 for (auto const& c : n.children) codegen_stmt(c);
             } break;
 
