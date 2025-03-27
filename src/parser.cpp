@@ -92,6 +92,9 @@ struct Parser {
             stmts.push_back(parse_stmt());
         }
 
+        // no need to actually abort here, just report an error
+        (void)consume(TokenType::Eof);
+
         auto span =
             stmts.empty()
                 ? Span{}
