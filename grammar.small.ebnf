@@ -1,6 +1,15 @@
-source_file ::= return_stmt ;
+source_file ::= { stmt } EOF ;
+
+stmt ::= return_stmt
+       | expr_stmt
+       | var_decl
+       | assign
+       ;
 
 return_stmt ::= "return" expr ";" ;
+var_decl    ::= "var" ID "=" expr ";" ;
+expr_stmt   ::= expr ";" ;
+assign      ::= expr "=" expr ";" ;
 
 expr ::= term ;
 
