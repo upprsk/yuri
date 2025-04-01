@@ -155,7 +155,32 @@ struct Parser {
 
     // ------------------------------------------------------------------------
 
-    auto parse_expr() -> AstNode { return parse_term(); }
+    auto parse_expr() -> AstNode { return parse_comp(); }
+
+    auto parse_comp() -> AstNode {
+        auto lhs = parse_term();
+        while (check(TokenType::EqualEqual) || check(TokenType::BangEqual) ||
+               check(TokenType::Less) || check(TokenType::LessEqual) ||
+               check(TokenType::Greater) || check(TokenType::GreaterEqual)) {
+            auto t = peek_and_advance();
+
+            auto kind = AstNodeKind::Err;
+            switch (t.type) {
+                case TokenType::EqualEqual: kind = AstNodeKind::Eq; break;
+                case TokenType::BangEqual: kind = AstNodeKind::Neq; break;
+                case TokenType::Less: kind = AstNodeKind::Lt; break;
+                case TokenType::LessEqual: kind = AstNodeKind::Lte; break;
+                case TokenType::Greater: kind = AstNodeKind::Gt; break;
+                case TokenType::GreaterEqual: kind = AstNodeKind::Gte; break;
+                default: __builtin_unreachable();
+            }
+
+            auto rhs = parse_term();
+            lhs = AstNode::Binary(lhs.span.extend(rhs.span), kind, lhs, rhs);
+        }
+
+        return lhs;
+    }
 
     auto parse_term() -> AstNode {
         auto lhs = parse_factor();

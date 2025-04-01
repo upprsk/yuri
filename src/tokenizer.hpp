@@ -11,6 +11,13 @@ namespace yuri {
 enum class TokenType {
     Err,
     Equal,
+    EqualEqual,
+    Bang,
+    BangEqual,
+    Less,
+    LessEqual,
+    Greater,
+    GreaterEqual,
     Semi,
     Lparen,
     Rparen,

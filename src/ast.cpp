@@ -21,6 +21,12 @@ auto fmt::formatter<yuri::AstNodeKind>::format(yuri::AstNodeKind n,
         case yuri::AstNodeKind::Sub: name = "Sub"; break;
         case yuri::AstNodeKind::Mul: name = "Mul"; break;
         case yuri::AstNodeKind::Div: name = "Div"; break;
+        case yuri::AstNodeKind::Eq: name = "Eq"; break;
+        case yuri::AstNodeKind::Neq: name = "Neq"; break;
+        case yuri::AstNodeKind::Lt: name = "Lt"; break;
+        case yuri::AstNodeKind::Lte: name = "Lte"; break;
+        case yuri::AstNodeKind::Gt: name = "Gt"; break;
+        case yuri::AstNodeKind::Gte: name = "Gte"; break;
         case yuri::AstNodeKind::Neg: name = "Neg"; break;
         case yuri::AstNodeKind::Int: name = "Int"; break;
         case yuri::AstNodeKind::Id: name = "Id"; break;

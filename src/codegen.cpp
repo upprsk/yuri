@@ -136,7 +136,13 @@ struct Codegen {
             case AstNodeKind::Add:
             case AstNodeKind::Sub:
             case AstNodeKind::Mul:
-            case AstNodeKind::Div: {
+            case AstNodeKind::Div:
+            case AstNodeKind::Eq:
+            case AstNodeKind::Neq:
+            case AstNodeKind::Lt:
+            case AstNodeKind::Lte:
+            case AstNodeKind::Gt:
+            case AstNodeKind::Gte: {
                 codegen_expr(n.children.at(0));
                 codegen_expr(n.children.at(1));
 
@@ -149,6 +155,12 @@ struct Codegen {
                     case AstNodeKind::Sub: op = "sub"; break;
                     case AstNodeKind::Mul: op = "mul"; break;
                     case AstNodeKind::Div: op = "div"; break;
+                    case AstNodeKind::Eq: op = "seq"; break;
+                    case AstNodeKind::Neq: op = "sne"; break;
+                    case AstNodeKind::Lt: op = "slt"; break;
+                    case AstNodeKind::Lte: op = "sle"; break;
+                    case AstNodeKind::Gt: op = "sgt"; break;
+                    case AstNodeKind::Gte: op = "sge"; break;
                     default: __builtin_unreachable();
                 }
 

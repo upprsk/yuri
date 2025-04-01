@@ -25,6 +25,13 @@ enum class AstNodeKind {
     Mul,
     Div,
 
+    Eq,
+    Neq,
+    Lt,
+    Lte,
+    Gt,
+    Gte,
+
     Neg,
 
     Int,

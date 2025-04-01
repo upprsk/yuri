@@ -64,7 +64,18 @@ struct Tokenizer {
 
         auto c = peek_and_advance();
         switch (c) {
-            case '=': return mkt(TokenType::Equal);
+            case '=':
+                if (match('=')) return mkt(TokenType::EqualEqual);
+                return mkt(TokenType::Equal);
+            case '!':
+                if (match('=')) return mkt(TokenType::BangEqual);
+                return mkt(TokenType::Bang);
+            case '<':
+                if (match('=')) return mkt(TokenType::LessEqual);
+                return mkt(TokenType::Less);
+            case '>':
+                if (match('=')) return mkt(TokenType::GreaterEqual);
+                return mkt(TokenType::Greater);
             case ';': return mkt(TokenType::Semi);
             case '(': return mkt(TokenType::Lparen);
             case ')': return mkt(TokenType::Rparen);

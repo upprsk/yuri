@@ -11,8 +11,9 @@ var_decl    ::= "var" ID "=" expr ";" ;
 expr_stmt   ::= expr ";" ;
 assign      ::= expr "=" expr ";" ;
 
-expr ::= term ;
+expr ::= comp ;
 
+comp    ::= term { ("==" | "!=" | "<" | "<=" | ">" | ">=" ) term } ;
 term    ::= factor { ("+" | "-") factor } ;
 factor  ::= primary { ("*" | "/") primary } ;
 primary ::= "(" expr ")"
