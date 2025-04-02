@@ -219,7 +219,7 @@ struct Codegen {
 
     auto lookup_local(std::string_view name) -> Local* {
         for (ssize_t i = locals.size() - 1; i >= 0; i--) {
-            if (locals.at(i).name == name) return &locals.at(0);
+            if (locals.at(i).name == name) return &locals.at(i);
         }
 
         return nullptr;
